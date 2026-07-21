@@ -21,11 +21,11 @@
     "fork_url": "https://github.com/tlmn2008/Tengine",
     "branch": "corex-port",
     "default_branch": "corex-port",
-    "default_branch_status": "not_attempted",
+    "default_branch_status": "success",
     "compare_url": "https://github.com/tlmn2008/Tengine/compare/tengine-lite...corex-port",
-    "push_commit": "",
-    "push_status": "pending",
-    "pushed_at": ""
+    "push_commit": "c4646a800d75e558af485a52279c1b529b2c7ca7",
+    "push_status": "success",
+    "pushed_at": "2026-07-21T18:50:00+08:00"
   },
 
   "local_logs": {
