@@ -1,0 +1,55 @@
+{
+  "blockers": [
+    {
+      "id": 1,
+      "category": "workaround-able",
+      "symptom": "CMake configure fails: 'Failed to extract nvcc implicit link line'. cmake/cuda.cmake forces CMAKE_CUDA_COMPILER to CUDAToolkit_NVCC_EXECUTABLE, which on CoreX is a bash shim that produces no objects.",
+      "file": "cmake/cuda.cmake",
+      "error_snippet": "CMake Error at .../CMakeNVCCParseImplicitInfo.cmake:141 (message): Failed to extract nvcc implicit link line.",
+      "attempts": [
+        {"action": "Reproduced the wall with an unmodified baseline configure (corex_port/build/baseline_configure.log).", "result": "confirmed"},
+        {"action": "Patched cmake/cuda.cmake to detect ${CUDAToolkit_BIN_DIR}/clang++ and use it as CMAKE_CUDA_COMPILER on CoreX (ID=ILUVATAR), falling back to nvcc on real NVIDIA.", "result": "resolved"}
+      ],
+      "final_verdict": "Configure succeeds; CUDA compiler detected as CoreX Clang 22.1.0.",
+      "resolved": true
+    },
+    {
+      "id": 2,
+      "category": "workaround-able",
+      "symptom": "nvgpu_softmax.cu:202 host code: 'no matching function for call to max'. CoreX clang++ only sees __device__ overloads of max().",
+      "file": "source/device/cuda/op/nvgpu_softmax.cu",
+      "error_snippet": "error: no matching function for call to 'max'",
+      "attempts": [
+        {"action": "Consulted iluvatar-cuda-base min-max-no-global case.", "result": "matched"},
+        {"action": "Added #include <algorithm> and changed max(...) to std::max(...).", "result": "resolved"}
+      ],
+      "final_verdict": "All 13 CUDA .cu op kernels compile with CoreX clang.",
+      "resolved": true
+    },
+    {
+      "id": 3,
+      "category": "workaround-able",
+      "symptom": "Target property CUDA_ARCHITECTURES set to NVIDIA sm numbers (50;52;61;70;75) is not valid for the CoreX clang backend, whose only arch is ivcore11.",
+      "file": "source/CMakeLists.txt",
+      "error_snippet": "N/A (proactively corrected per nvcc-flag-translation before it could break codegen)",
+      "attempts": [
+        {"action": "Guarded the arch block on CMAKE_CUDA_COMPILER_ID==ILUVATAR and set CUDA_ARCHITECTURES ivcore11 (+ CMAKE_CUDA_ARCHITECTURES=ivcore11 env).", "result": "resolved"}
+      ],
+      "final_verdict": "CUDA objects build for ivcore11.",
+      "resolved": true
+    },
+    {
+      "id": 4,
+      "category": "workaround-able",
+      "symptom": "A full `cmake --build build` also builds ~48 OpenCV image-demo examples and 3 pipeline examples; some fail to link (undefined reference to cv::putText/cv::imwrite) and the pipeline headers miss <string>/<cstdio> under clang. These targets are NOT part of the CUDA backend.",
+      "file": "examples/CMakeLists.txt, examples/pipeline/graph/*.h",
+      "error_snippet": "undefined reference to `cv::imwrite(...)`; error: implicit instantiation of undefined template 'std::basic_string<char>'; use of undeclared identifier 'stderr'",
+      "attempts": [
+        {"action": "Confirmed OpenCV 4.6.0 (CoreX build) is installed and cv::putText/cv::imwrite symbols exist in libopencv_imgproc/imgcodecs; the failure is OpenCV example link wiring (OpenCV_LIBS) + clang header hygiene, independent of the CUDA port.", "result": "diagnosed"},
+        {"action": "Scoped the migration build to the CUDA backend targets (tengine-lite, tengine-lite-static, tm_classification_cuda) which build cleanly; the CPU reference tm_classification also builds.", "result": "resolved (out of CUDA scope)"}
+      ],
+      "final_verdict": "Not a CUDA-backend blocker. The CUDA library + CUDA example build and run on GPU; OpenCV/pipeline demo examples are orthogonal and left out of the CUDA migration surface.",
+      "resolved": true
+    }
+  ]
+}

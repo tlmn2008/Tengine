@@ -1,0 +1,9 @@
+# Paths are relative to this corex_port/ directory.
+# Large local-only build logs (see design spec §5) stay out of git.
+build/*.log
+env/*.log
+# ...but keep the committed env evidence:
+!env/ixsmi.log
+!env/clang_version.txt
+# NOTE: test/test.log MUST be committed (authoritative per-case evidence) and is
+# intentionally NOT ignored here.

@@ -1,0 +1,23 @@
+# Tengine CUDA backend build on Iluvatar CoreX (ivcore11)
+# Environment (see corex_port/env/corex_env.sh):
+. /etc/profile.d/corex.sh
+export LD_LIBRARY_PATH=/usr/local/openmpi/lib:/usr/local/corex/lib64:/usr/local/corex/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+export PATH=/usr/local/corex/bin:$PATH
+export CUDA_VISIBLE_DEVICES=1
+export CMAKE_CUDA_ARCHITECTURES=ivcore11
+
+# Configure (CUDA backend ON). CoreX auto-detects clang++ (ID=ILUVATAR) as the
+# CUDA compiler thanks to the cmake/cuda.cmake patch.
+cmake -S . -B build -DTENGINE_ENABLE_CUDA=ON -DCMAKE_BUILD_TYPE=Release
+
+# Build the CUDA-backend library + CUDA example (migration surface).
+cmake --build build --target tengine-lite tengine-lite-static tm_classification_cuda -j"$(nproc)"
+
+# (tm_classification is also built as the CPU reference used by the test harness.)
+cmake --build build --target tm_classification -j"$(nproc)"
+
+# NOTE: a full `cmake --build build` additionally tries to build ~48 OpenCV-based
+# image demo examples and 3 pipeline examples. Those are NOT part of the CUDA
+# backend and fail to link in this environment (OpenCV example link wiring /
+# clang header hygiene); see corex_port/blockers.json. They are out of scope for
+# the CUDA migration.

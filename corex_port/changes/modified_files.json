@@ -1,0 +1,19 @@
+{
+  "files": [
+    {
+      "path": "cmake/cuda.cmake",
+      "action": "edit",
+      "reason": "CoreX ships nvcc only as a bash shim; forcing CMAKE_CUDA_COMPILER to it makes CMake fail with 'Failed to extract nvcc implicit link line'. Detect the CoreX toolkit and use clang++ (CMAKE_CUDA_COMPILER_ID=ILUVATAR) instead, keeping nvcc for genuine NVIDIA toolchains."
+    },
+    {
+      "path": "source/CMakeLists.txt",
+      "action": "edit",
+      "reason": "Set target CUDA_ARCHITECTURES to ivcore11 on the ILUVATAR compiler (NVIDIA sm_50/52/61/70/75 numbers are not accepted by the CoreX clang backend); and skip the nvcc-only diagnostic -Werror=cross-execution-space-call for ILUVATAR (unknown warning option under CoreX clang)."
+    },
+    {
+      "path": "source/device/cuda/op/nvgpu_softmax.cu",
+      "action": "edit",
+      "reason": "Host-side bare max() fails on the CoreX clang++ front-end ('no matching function for call to max' - CUDA math headers expose only __device__ overloads). Include <algorithm> and use std::max (documented iluvatar-cuda-base min-max-no-global case)."
+    }
+  ]
+}

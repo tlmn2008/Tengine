@@ -1,0 +1,35 @@
+{
+  "repo_name": "Tengine",
+  "repo_url": "https://github.com/OAID/Tengine.git",
+  "source_commit": "5ec1c383c8adb0078c025b9fec6fa3dea254034a",
+  "source_commit_date": "2024-09-15T23:45:52+08:00",
+  "source_branch": "tengine-lite",
+  "migration_started_at": "2026-07-21T18:32:00+08:00",
+  "migration_finished_at": "2026-07-21T18:45:00+08:00",
+  "sdk_version": "/usr/local/corex (CoreX 4.5.0, clang++ 22.1.0, ivcore11)",
+  "skill_version": "corex-CUDA-compatible-migration@1.0",
+
+  "compile_status": "success",
+  "test_status": "all_pass",
+  "overall_status": "migrated",
+  "tests_run": 9,
+  "tests_passed": 9,
+  "tests_failed": 0,
+  "tests_skipped": 0,
+
+  "github": {
+    "fork_url": "https://github.com/tlmn2008/Tengine",
+    "branch": "corex-port",
+    "default_branch": "corex-port",
+    "default_branch_status": "not_attempted",
+    "compare_url": "https://github.com/tlmn2008/Tengine/compare/tengine-lite...corex-port",
+    "push_commit": "",
+    "push_status": "pending",
+    "pushed_at": ""
+  },
+
+  "local_logs": {
+    "compile_log": "/home/repos/Tengine/corex_port/build/compile.log",
+    "test_log": "/home/repos/Tengine/corex_port/test/test.log"
+  }
+}

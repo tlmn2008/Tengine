@@ -1,0 +1,32 @@
+{
+  "skill": "iluvatar-cuda-base",
+  "cases_used": [
+    {
+      "case": "nvcc-shell-stub-detect",
+      "symptom": "which nvcc -> /usr/local/corex/bin/nvcc is a #!/bin/bash script (prints an nvcc banner, produces no objects); CMake ENABLE_LANGUAGE(CUDA) fails with 'Failed to extract nvcc implicit link line'.",
+      "applied": "Did not create a dummy nvcc / did not use the stub as CUDA compiler. Detected the CoreX toolkit in cmake/cuda.cmake and pointed CMAKE_CUDA_COMPILER at clang++ (ID=ILUVATAR)."
+    },
+    {
+      "case": "cmake-corex-template",
+      "symptom": "How a standard CMake `LANGUAGES CUDA` project maps onto CoreX (clang++ -x ivcore, CMAKE_CUDA_COMPILER_ID=ILUVATAR, CUDAToolkit reports 10.2 but clang is 22.x).",
+      "applied": "Relied on CoreX auto-detection of clang++ as the CUDA compiler after removing the forced nvcc; set CMAKE_CUDA_ARCHITECTURES=ivcore11."
+    },
+    {
+      "case": "nvcc-flag-translation",
+      "symptom": "nvcc-only flags / NVIDIA sm_XX arch numbers are rejected or ignored by the CoreX clang backend.",
+      "applied": "Set target CUDA_ARCHITECTURES=ivcore11 for ILUVATAR; guarded -Werror=cross-execution-space-call so it is not passed to CoreX clang."
+    },
+    {
+      "case": "min-max-no-global",
+      "symptom": "Host-side bare min()/max() -> 'no matching function for call to max' under CoreX clang++ (only __device__ overloads visible; nvcc's GCC host path exposes global min/max).",
+      "applied": "Included <algorithm> and used std::max in source/device/cuda/op/nvgpu_softmax.cu (host code path)."
+    }
+  ],
+  "cases_checked_not_hit": [
+    "double-degraded-fp32 / double-cmath-broken (no device double arithmetic in the CUDA ops; only a commented-out host double timing line)",
+    "texture-software-bridge (no texture<>/tex1D/tex2D usage in the CUDA backend)",
+    "um-to-malloc (backend uses explicit cudaMalloc + cudaMemcpy, no cudaMallocManaged)",
+    "atomics-broken (no u64/double atomics in the ops)",
+    "warp32-to-warp64 (softmax reduction uses __shared__ block reduction, no warp-shuffle assumptions that break)"
+  ]
+}

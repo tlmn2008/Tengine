@@ -384,12 +384,21 @@ IF (TENGINE_ENABLE_CUDA)
 #    TARGET_COMPILE_OPTIONS (${TENGINE_LITE_NAME}-static PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-flto>)
 #    TARGET_COMPILE_OPTIONS (${TENGINE_LITE_NAME}        PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-flto>)
 
-    TARGET_COMPILE_OPTIONS (${TENGINE_LITE_NAME}-static PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Werror=cross-execution-space-call>)
-    TARGET_COMPILE_OPTIONS (${TENGINE_LITE_NAME}        PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Werror=cross-execution-space-call>)
+    # -Werror=cross-execution-space-call is an nvcc-only diagnostic; the CoreX
+    # clang++ CUDA front-end does not know it and emits -Wunknown-warning-option.
+    IF (NOT CMAKE_CUDA_COMPILER_ID STREQUAL "ILUVATAR")
+        TARGET_COMPILE_OPTIONS (${TENGINE_LITE_NAME}-static PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Werror=cross-execution-space-call>)
+        TARGET_COMPILE_OPTIONS (${TENGINE_LITE_NAME}        PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:-Werror=cross-execution-space-call>)
+    ENDIF()
 
 
     IF (${CMAKE_MINOR_VERSION} GREATER 17)
-        IF (TENGINE_TARGET_PROCESSOR MATCHES "ARM")
+        IF (CMAKE_CUDA_COMPILER_ID STREQUAL "ILUVATAR")
+            # Iluvatar CoreX: the only valid GPU arch is ivcore11; NVIDIA sm_XX
+            # numbers are not accepted by the CoreX clang backend.
+            SET_PROPERTY(TARGET ${TENGINE_LITE_NAME}-static PROPERTY CUDA_ARCHITECTURES ivcore11)
+            SET_PROPERTY(TARGET ${TENGINE_LITE_NAME}        PROPERTY CUDA_ARCHITECTURES ivcore11)
+        ELSEIF (TENGINE_TARGET_PROCESSOR MATCHES "ARM")
             SET_PROPERTY(TARGET ${TENGINE_LITE_NAME}-static PROPERTY CUDA_ARCHITECTURES 53 62 72)
             SET_PROPERTY(TARGET ${TENGINE_LITE_NAME}        PROPERTY CUDA_ARCHITECTURES 53 62 72)
         ELSE()

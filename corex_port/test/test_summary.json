@@ -1,0 +1,26 @@
+{
+  "tests_run": 9,
+  "tests_passed": 9,
+  "tests_failed": 0,
+  "tests_skipped": 0,
+  "metrics": [
+    {
+      "name": "cuda_classification_pass_rate",
+      "metric_type": "pass_rate",
+      "value": 1.0,
+      "unit": "ratio",
+      "config": "9 ImageNet-style models, CUDA-on-GPU run vs CPU top-5 parity",
+      "device": "GPU 1 (Iluvatar BI-V150)",
+      "source": "corex_port/test/run_tests.sh"
+    },
+    {"name": "squeezenet_v1.1_cuda_latency", "metric_type": "latency", "value": 1.94, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 39.89 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "mobilenet_cuda_latency", "metric_type": "latency", "value": 1.43, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 46.73 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "mobilenet_v2_cuda_latency", "metric_type": "latency", "value": 2.78, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 51.70 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "googlenet_cuda_latency", "metric_type": "latency", "value": 20.90, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 111.89 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "resnet18_cuda_latency", "metric_type": "latency", "value": 2.41, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 89.92 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "resnet50_cuda_latency", "metric_type": "latency", "value": 4.26, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 168.54 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "shufflenet_v2_cuda_latency", "metric_type": "latency", "value": 4.72, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 22.31 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "inception_v3_cuda_latency", "metric_type": "latency", "value": 5.91, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 154.68 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "vgg16_cuda_latency", "metric_type": "latency", "value": 4.21, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 485.06 ms", "device": "GPU 1", "source": "tm_classification_cuda"}
+  ]
+}

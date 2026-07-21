@@ -32,7 +32,20 @@ ENDIF()
 
 IF (TENGINE_ENABLE_CUDA)
     # enable language CUDA
-    SET (CMAKE_CUDA_COMPILER ${CUDAToolkit_NVCC_EXECUTABLE})
+    #
+    # Iluvatar CoreX (ivcore11) port: the CoreX SDK ships `nvcc` only as a thin
+    # bash shim (it prints an nvcc banner then exits, producing no objects). If we
+    # force CMAKE_CUDA_COMPILER to that shim, CMake fails with
+    #   "Failed to extract nvcc implicit link line".
+    # On CoreX the real CUDA-capable compiler is clang++ (CMAKE_CUDA_COMPILER_ID
+    # becomes "ILUVATAR"), so prefer clang++ from the toolkit bin dir when present
+    # and fall back to nvcc on genuine NVIDIA toolchains.
+    IF (EXISTS "${CUDAToolkit_BIN_DIR}/clang++")
+        SET (CMAKE_CUDA_COMPILER "${CUDAToolkit_BIN_DIR}/clang++")
+        MESSAGE (STATUS "Tengine: CoreX detected, using clang++ as CUDA compiler: ${CMAKE_CUDA_COMPILER}")
+    ELSE()
+        SET (CMAKE_CUDA_COMPILER ${CUDAToolkit_NVCC_EXECUTABLE})
+    ENDIF()
 
     INCLUDE (CheckLanguage)
     CHECK_LANGUAGE (CUDA)

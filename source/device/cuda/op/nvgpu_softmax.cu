@@ -25,6 +25,12 @@
 
 #include "cuda_executor.hpp"
 
+// Iluvatar CoreX (ivcore11) port: on the CoreX clang++ front-end a bare host-side
+// call to max()/min() fails ("no matching function for call to 'max'") because the
+// CUDA math headers only expose __device__ overloads; unlike nvcc's GCC host path
+// they are not visible in host context. Use std::max from <algorithm> instead.
+#include <algorithm>
+
 extern "C"
 {
 #include "softmax_param.h"
@@ -199,7 +205,7 @@ void softmax_gpu_kernel_2(struct graph* ir_graph, struct node* ir_node, dict_uin
             result[i] = -9999.9f;
             for (int j = 0; j < s / channels; j++)
             {
-                result[i] = max(result[i], result_tmp[i * s / channels + j]);
+                result[i] = std::max(result[i], result_tmp[i * s / channels + j]);
             }
             for (int j = 0; j < s / channels; j++)
             {

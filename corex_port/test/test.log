@@ -1,0 +1,344 @@
+############ Tengine CUDA backend on-GPU test (device=GPU 1) ############
+Timestamp    Tue Jul 21 18:45:44 2026
++--------------------------------------------------------------------------------+
+|  IX-ML: 4.4.0            Driver Version: 4.5.0          CUDA Version: 10.2     |
+|----------------------------------+----------------------+----------------------|
+| GPU  Name                        | Bus-Id               | Clock-SM  Clock-Mem  |
+| Fan  Temp  Perf    Pwr:Usage/Cap |      Memory-Usage    | GPU-Util  Compute M. |
+
+======================================================================
+[CASE 1] model=squeezenet_v1.1  (CUDA on GPU 1 vs CPU parity)
+----------------------------------------------------------------------
+--- CUDA (GPU) ---
+tengine-lite library version: 1.5-dev
+### softmax axis 1
+### softmax axis 1
+### softmax axis 1
+### softmax axis 1
+
+model file : benchmark/models/squeezenet_v1.1_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 3 times, thread 1, avg time 2.07 ms, max_time 2.26 ms, min_time 1.94 ms
+--------------------------------------
+0.001000, 0
+0.001000, 1
+0.001000, 2
+0.001000, 3
+0.001000, 4
+--------------------------------------
+--- CPU (reference) ---
+tengine-lite library version: 1.5-dev
+
+model file : benchmark/models/squeezenet_v1.1_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 1 times, thread 1, avg time 39.89 ms, max_time 39.89 ms, min_time 39.89 ms
+--------------------------------------
+0.001000, 0
+0.001000, 1
+0.001000, 2
+0.001000, 3
+0.001000, 4
+--------------------------------------
+----------------------------------------------------------------------
+[RESULT squeezenet_v1.1] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=1.94ms)
+
+======================================================================
+[CASE 2] model=mobilenet  (CUDA on GPU 1 vs CPU parity)
+----------------------------------------------------------------------
+--- CUDA (GPU) ---
+tengine-lite library version: 1.5-dev
+
+model file : benchmark/models/mobilenet_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 3 times, thread 1, avg time 1.79 ms, max_time 2.21 ms, min_time 1.43 ms
+--------------------------------------
+0.000000, 0
+0.000000, 1
+0.000000, 2
+0.000000, 3
+0.000000, 4
+--------------------------------------
+--- CPU (reference) ---
+tengine-lite library version: 1.5-dev
+
+model file : benchmark/models/mobilenet_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 1 times, thread 1, avg time 46.73 ms, max_time 46.73 ms, min_time 46.73 ms
+--------------------------------------
+0.000000, 0
+0.000000, 1
+0.000000, 2
+0.000000, 3
+0.000000, 4
+--------------------------------------
+----------------------------------------------------------------------
+[RESULT mobilenet] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=1.43ms)
+
+======================================================================
+[CASE 3] model=mobilenet_v2  (CUDA on GPU 1 vs CPU parity)
+----------------------------------------------------------------------
+--- CUDA (GPU) ---
+tengine-lite library version: 1.5-dev
+### softmax axis 1
+### softmax axis 1
+### softmax axis 1
+### softmax axis 1
+
+model file : benchmark/models/mobilenet_v2_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 3 times, thread 1, avg time 3.29 ms, max_time 4.05 ms, min_time 2.78 ms
+--------------------------------------
+0.001000, 0
+0.001000, 1
+0.001000, 2
+0.001000, 3
+0.001000, 4
+--------------------------------------
+--- CPU (reference) ---
+tengine-lite library version: 1.5-dev
+
+model file : benchmark/models/mobilenet_v2_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 1 times, thread 1, avg time 51.70 ms, max_time 51.70 ms, min_time 51.70 ms
+--------------------------------------
+0.001000, 0
+0.001000, 1
+0.001000, 2
+0.001000, 3
+0.001000, 4
+--------------------------------------
+----------------------------------------------------------------------
+[RESULT mobilenet_v2] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=2.78ms)
+
+======================================================================
+[CASE 4] model=googlenet  (CUDA on GPU 1 vs CPU parity)
+----------------------------------------------------------------------
+--- CUDA (GPU) ---
+tengine-lite library version: 1.5-dev
+### softmax axis 1
+### softmax axis 1
+### softmax axis 1
+### softmax axis 1
+
+model file : benchmark/models/googlenet_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 3 times, thread 1, avg time 25.73 ms, max_time 35.21 ms, min_time 20.90 ms
+--------------------------------------
+0.001000, 0
+0.001000, 1
+0.001000, 2
+0.001000, 3
+0.001000, 4
+--------------------------------------
+--- CPU (reference) ---
+tengine-lite library version: 1.5-dev
+
+model file : benchmark/models/googlenet_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 1 times, thread 1, avg time 111.89 ms, max_time 111.89 ms, min_time 111.89 ms
+--------------------------------------
+0.001000, 0
+0.001000, 1
+0.001000, 2
+0.001000, 3
+0.001000, 4
+--------------------------------------
+----------------------------------------------------------------------
+[RESULT googlenet] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=20.90ms)
+
+======================================================================
+[CASE 5] model=resnet18  (CUDA on GPU 1 vs CPU parity)
+----------------------------------------------------------------------
+--- CUDA (GPU) ---
+tengine-lite library version: 1.5-dev
+### softmax axis 1
+### softmax axis 1
+### softmax axis 1
+### softmax axis 1
+
+model file : benchmark/models/resnet18_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 3 times, thread 1, avg time 2.54 ms, max_time 2.78 ms, min_time 2.41 ms
+--------------------------------------
+0.001000, 0
+0.001000, 1
+0.001000, 2
+0.001000, 3
+0.001000, 4
+--------------------------------------
+--- CPU (reference) ---
+tengine-lite library version: 1.5-dev
+
+model file : benchmark/models/resnet18_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 1 times, thread 1, avg time 89.92 ms, max_time 89.92 ms, min_time 89.92 ms
+--------------------------------------
+0.001000, 0
+0.001000, 1
+0.001000, 2
+0.001000, 3
+0.001000, 4
+--------------------------------------
+----------------------------------------------------------------------
+[RESULT resnet18] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=2.41ms)
+
+======================================================================
+[CASE 6] model=resnet50  (CUDA on GPU 1 vs CPU parity)
+----------------------------------------------------------------------
+--- CUDA (GPU) ---
+tengine-lite library version: 1.5-dev
+### softmax axis 1
+### softmax axis 1
+### softmax axis 1
+### softmax axis 1
+
+model file : benchmark/models/resnet50_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 3 times, thread 1, avg time 4.79 ms, max_time 5.17 ms, min_time 4.26 ms
+--------------------------------------
+0.001000, 0
+0.001000, 1
+0.001000, 2
+0.001000, 3
+0.001000, 4
+--------------------------------------
+--- CPU (reference) ---
+tengine-lite library version: 1.5-dev
+
+model file : benchmark/models/resnet50_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 1 times, thread 1, avg time 168.54 ms, max_time 168.54 ms, min_time 168.54 ms
+--------------------------------------
+0.001000, 0
+0.001000, 1
+0.001000, 2
+0.001000, 3
+0.001000, 4
+--------------------------------------
+----------------------------------------------------------------------
+[RESULT resnet50] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=4.26ms)
+
+======================================================================
+[CASE 7] model=shufflenet_v2  (CUDA on GPU 1 vs CPU parity)
+----------------------------------------------------------------------
+--- CUDA (GPU) ---
+tengine-lite library version: 1.5-dev
+
+model file : benchmark/models/shufflenet_v2_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 3 times, thread 1, avg time 5.44 ms, max_time 6.46 ms, min_time 4.72 ms
+--------------------------------------
+0.000000, 0
+0.000000, 1
+0.000000, 2
+0.000000, 3
+0.000000, 4
+--------------------------------------
+--- CPU (reference) ---
+tengine-lite library version: 1.5-dev
+
+model file : benchmark/models/shufflenet_v2_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 1 times, thread 1, avg time 22.31 ms, max_time 22.31 ms, min_time 22.31 ms
+--------------------------------------
+0.000000, 0
+0.000000, 1
+0.000000, 2
+0.000000, 3
+0.000000, 4
+--------------------------------------
+----------------------------------------------------------------------
+[RESULT shufflenet_v2] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=4.72ms)
+
+======================================================================
+[CASE 8] model=inception_v3  (CUDA on GPU 1 vs CPU parity)
+----------------------------------------------------------------------
+--- CUDA (GPU) ---
+tengine-lite library version: 1.5-dev
+### softmax axis 1
+### softmax axis 1
+### softmax axis 1
+### softmax axis 1
+
+model file : benchmark/models/inception_v3_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 3 times, thread 1, avg time 7.30 ms, max_time 9.32 ms, min_time 5.91 ms
+--------------------------------------
+0.001000, 0
+0.001000, 1
+0.001000, 2
+0.001000, 3
+0.001000, 4
+--------------------------------------
+--- CPU (reference) ---
+tengine-lite library version: 1.5-dev
+
+model file : benchmark/models/inception_v3_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 1 times, thread 1, avg time 154.68 ms, max_time 154.68 ms, min_time 154.68 ms
+--------------------------------------
+0.001000, 0
+0.001000, 1
+0.001000, 2
+0.001000, 3
+0.001000, 4
+--------------------------------------
+----------------------------------------------------------------------
+[RESULT inception_v3] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=5.91ms)
+
+======================================================================
+[CASE 9] model=vgg16  (CUDA on GPU 1 vs CPU parity)
+----------------------------------------------------------------------
+--- CUDA (GPU) ---
+tengine-lite library version: 1.5-dev
+### softmax axis 1
+### softmax axis 1
+### softmax axis 1
+### softmax axis 1
+
+model file : benchmark/models/vgg16_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 3 times, thread 1, avg time 4.46 ms, max_time 4.89 ms, min_time 4.21 ms
+--------------------------------------
+0.001000, 0
+0.001000, 1
+0.001000, 2
+0.001000, 3
+0.001000, 4
+--------------------------------------
+--- CPU (reference) ---
+tengine-lite library version: 1.5-dev
+
+model file : benchmark/models/vgg16_benchmark.tmfile
+image file : /tmp/test_img.jpg
+img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
+Repeat 1 times, thread 1, avg time 485.06 ms, max_time 485.06 ms, min_time 485.06 ms
+--------------------------------------
+0.001000, 0
+0.001000, 1
+0.001000, 2
+0.001000, 3
+0.001000, 4
+--------------------------------------
+----------------------------------------------------------------------
+[RESULT vgg16] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=4.21ms)
+
+############ SUMMARY ############
+tests_run=9 tests_passed=9 tests_failed=0
