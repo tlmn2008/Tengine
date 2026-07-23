@@ -1,26 +1,46 @@
 {
-  "tests_run": 9,
+  "suite": "Full relevant test suite = repository ctest collection (75 ONNX operator tests, tests/op/test_onnx_op_*.cpp, CPU reference backend) + CUDA-backend on-GPU parity harness (9 ImageNet-style models). This file is a completeness-correction re-run: the previous record ran ONLY the 9-model CUDA demo and reported 9/9 as the whole suite.",
+  "run_command": "(cd build && ctest --output-on-failure -V --timeout 120)  # 75 registered onnx op tests, CPU reference backend  ;  bash corex_port/test/run_tests.sh  # 9-model CUDA-vs-CPU top-5 parity on GPU 1",
+  "scope_note": "Only PART B (9 models via tm_classification_cuda) exercises the migrated CUDA backend. PART A (all 75 ctest onnx op tests) runs on the Tengine CPU reference backend via create_graph(nullptr,...) and does NOT touch CUDA; the test binaries hardcode the default (CPU) context so there is no env/flag to point them at the CUDA backend without source edits. All 75 fail at model-load ('cannot open file ../onnx_node/<op>/onnx.tmfile') because the external ONNX node test data is not present and onnx must not be installed/vendored; they never reach inference. They are counted as legitimate skips (missing data file, analogous to a missing weight file) and are out of the CUDA migration scope.",
+  "tests_run": 84,
   "tests_passed": 9,
   "tests_failed": 0,
-  "tests_skipped": 0,
+  "tests_skipped": 75,
+  "raw_ctest_result": "ctest exit=8: 75/75 Failed, 100% with 'cannot open file ../onnx_node/<op>/onnx.tmfile -> Create graph failed' (missing external test data at load time; no inference reached). Full verbose output is in test.log PART A. Reclassified here as skipped(legitimate), NOT passed.",
+  "skipped_reasons": [
+    {
+      "reason": "cannot open file ../onnx_node/<op>/onnx.tmfile (external ONNX node test data not present; onnx not installed/vendored per instruction)",
+      "count": 75,
+      "legitimate": true,
+      "note": "这 75 个是 ctest 注册的 ONNX 算子测试(tests/op/test_onnx_op_*.cpp)，全部跑在 Tengine CPU 参考后端(create_graph(nullptr,...))，不经过 CUDA 后端，属 CUDA 迁移范围之外。它们在加载模型阶段即因缺少外部 onnx_node 测试数据(onnx.tmfile + input/output .pb)而 Create graph failed，从未进入推理，故非 CoreX/CUDA 缺陷。属客观数据缺失(类比缺权重文件)的合法跳过；原始 ctest 判定为 75 Failed(退出码 8)，同一 open-file 原因，已完整保留在 test.log PART A，此处如实归类为 skipped，未计为通过。75 个测试二进制均已用 CoreX clang++ 编译通过。"
+    }
+  ],
   "metrics": [
     {
-      "name": "cuda_classification_pass_rate",
+      "name": "cuda_backend_classification_parity",
       "metric_type": "pass_rate",
       "value": 1.0,
       "unit": "ratio",
-      "config": "9 ImageNet-style models, CUDA-on-GPU run vs CPU top-5 parity",
+      "config": "9 ImageNet-style models, CUDA-on-GPU vs CPU-reference top-5 parity (CUDA-exercising portion)",
       "device": "GPU 1 (Iluvatar BI-V150)",
       "source": "corex_port/test/run_tests.sh"
     },
-    {"name": "squeezenet_v1.1_cuda_latency", "metric_type": "latency", "value": 1.94, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 39.89 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
-    {"name": "mobilenet_cuda_latency", "metric_type": "latency", "value": 1.43, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 46.73 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
-    {"name": "mobilenet_v2_cuda_latency", "metric_type": "latency", "value": 2.78, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 51.70 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
-    {"name": "googlenet_cuda_latency", "metric_type": "latency", "value": 20.90, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 111.89 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
-    {"name": "resnet18_cuda_latency", "metric_type": "latency", "value": 2.41, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 89.92 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
-    {"name": "resnet50_cuda_latency", "metric_type": "latency", "value": 4.26, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 168.54 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
-    {"name": "shufflenet_v2_cuda_latency", "metric_type": "latency", "value": 4.72, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 22.31 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
-    {"name": "inception_v3_cuda_latency", "metric_type": "latency", "value": 5.91, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 154.68 ms", "device": "GPU 1", "source": "tm_classification_cuda"},
-    {"name": "vgg16_cuda_latency", "metric_type": "latency", "value": 4.21, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu 485.06 ms", "device": "GPU 1", "source": "tm_classification_cuda"}
+    {
+      "name": "onnx_op_ctest_verified_pass_rate",
+      "metric_type": "pass_rate",
+      "value": 0.0,
+      "unit": "ratio",
+      "config": "75 registered ONNX op ctests (CPU reference); 0 verified-pass, 75 skipped for missing external onnx_node data; raw ctest=75 Failed on load",
+      "source": "(cd build && ctest --output-on-failure -V --timeout 120)"
+    },
+    {"name": "squeezenet_v1.1_cuda_latency", "metric_type": "latency", "value": 1.71, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "mobilenet_cuda_latency", "metric_type": "latency", "value": 1.52, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "mobilenet_v2_cuda_latency", "metric_type": "latency", "value": 2.79, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "googlenet_cuda_latency", "metric_type": "latency", "value": 20.91, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "resnet18_cuda_latency", "metric_type": "latency", "value": 1.97, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "resnet50_cuda_latency", "metric_type": "latency", "value": 4.02, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "shufflenet_v2_cuda_latency", "metric_type": "latency", "value": 4.03, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "inception_v3_cuda_latency", "metric_type": "latency", "value": 5.44, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "vgg16_cuda_latency", "metric_type": "latency", "value": 3.96, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"}
   ]
 }

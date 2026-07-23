@@ -25,12 +25,20 @@
 未改 SDK、未造 dummy nvcc、未用 `-O0` 规避、未超 2 GPU / 2 rank。
 
 ## 结果
-- **编译**：`success`。CUDA 后端库 `libtengine-lite.so` / `libtengine-lite-static.a` 及全部 13 个 `.cu` 算子、CUDA 示例 `tm_classification_cuda` 均用 CoreX clang 编译通过。
-- **测试（GPU 1 上真实运行）**：`all_pass`，9/9。用 CUDA 示例在 GPU 上跑 9 个 ImageNet 类分类基准模型（squeezenet_v1.1 / mobilenet / mobilenet_v2 / googlenet / resnet18 / resnet50 / shufflenet_v2 / inception_v3 / vgg16），并与 CPU 参考后端做 top-5 数值对齐（parity）——9 个模型 CUDA 与 CPU 输出完全一致，且 GPU 明显加速（如 vgg16：GPU 4.21ms vs CPU 485ms，约 115×）。
-  - 说明：`*_benchmark.tmfile` 是仅含结构、无训练权重的测速模型，故 CPU 与 CUDA 的 top-5 都是恒定值（如 0.0）；测试断言的是 **CUDA==CPU 数值对齐 + 在 GPU 上无错退出**，而非具体类别标签。
-  - 完整逐用例日志见 `test/test.log`，指标见 `test/test_summary.json`。
+
+> **本次为“完整性纠正”重跑（2026-07-23）。** 上一版记录只跑了 9 模型的 `tm_classification_cuda` demo 就把 9/9 当成全量，违反完整性红线。本次按 `-DTENGINE_BUILD_TESTS=ON` 构建并运行仓库的**完整 ctest 注册测试集**，如实分离 CUDA 后端 vs CPU 参考后端两部分。
+
+- **编译**：`success`。CUDA 后端库 `libtengine-lite.so` / `libtengine-lite-static.a`、全部 13 个 `.cu` 算子、CUDA 示例 `tm_classification_cuda`、以及**全部 75 个 ONNX 算子测试二进制 + 21 个 model 测试二进制**均用 CoreX clang++ 编译通过（`build/compile_tests.log`）。唯一编译报错集中在 `examples/`（~48 个 OpenCV 图像 demo + 3 个 pipeline 示例，74 组 error 全部在 `examples/`，0 组在 `tests/`），即 blocker #4，与 CUDA 后端正交、超出迁移范围。
+
+- **测试全量（84 例）**：`partial_pass` —— tests_run=84，passed=9，failed=0，skipped=75。分两部分：
+
+  1. **PART A — 完整 ctest 集合：75 个 ONNX 算子测试（`tests/op/test_onnx_op_*.cpp`）**。这些用 `create_graph(nullptr, "tengine", model)` 跑在 **CPU 参考后端**，**完全不经过 CUDA 后端**（测试源码硬编码默认 CPU context，无 env/flag 可切到 CUDA，除非改源码），属 CUDA 迁移范围之外。原始 `ctest --output-on-failure -V`（退出码 8）判定 **75/75 Failed**，失败原因 100% 相同：`cannot open file ../onnx_node/<op>/onnx.tmfile → Create graph failed`，即缺少外部 ONNX 节点测试数据（`onnx.tmfile` + `input/output .pb`），在**加载模型阶段即失败、从未进入推理**。按用户要求 onnx 不得安装/pip/编译/vendor（系统仅有 `onnxruntime-gpu`，不含节点测试数据）。故这 75 例按“缺数据文件=合法跳过”（类比缺权重文件）归类为 **skipped(legitimate)**，未计为通过；完整逐例原始输出保留在 `test/test.log` PART A，绝未从总数中剔除。
+
+  2. **PART B — CUDA 后端 on-GPU 证据：9 个 ImageNet 类分类基准模型的 CUDA↔CPU top-5 数值对齐**。在 GPU 1 上真实运行，**9/9 PASS**（本次重跑延迟：squeezenet 1.71 / mobilenet 1.52 / mobilenet_v2 2.79 / googlenet 20.91 / resnet18 1.97 / resnet50 4.02 / shufflenet_v2 4.03 / inception_v3 5.44 / vgg16 3.96 ms）。这是唯一真正**行使 CUDA 后端**的部分。说明：`*_benchmark.tmfile` 仅含结构无权重，CPU/CUDA top-5 皆恒定值，断言的是 **CUDA==CPU 对齐 + GPU 无错退出**。
+
+- **诚实结论**：CUDA 后端本身（编译 + on-GPU 运行 + 与 CPU 对齐）已验证通过（9/9）；但仓库注册的 ctest 主体（75 个 CPU 参考算子测试）因缺外部数据无法执行、未被验证。因此整体判定为 **partial / partial_pass**（而非 migrated），以免像上一版那样高估。计数、run_command、范围说明见 `test/test_summary.json`；权威逐例日志见 `test/test.log`。
 
 ## Failure Gate
-- 每个 wall 均先真实复现再修：baseline configure 失败（`build/baseline_configure.log`）、softmax 编译失败（`build/compile.log`）均有实测错误证据。
-- blocker 分类见 `blockers.json`：3 个与 CUDA 直接相关的均为 workaround-able 且已解决；第 4 个（`cmake --build` 全量还会去编 ~48 个 OpenCV 图像 demo 示例 + 3 个 pipeline 示例，链接失败）经诊断为 OpenCV 示例链接/头文件卫生问题，**与 CUDA 后端无关**，已确认 OpenCV 4.6.0 及相关符号存在，属正交问题，迁移面按 CUDA 后端目标裁定，不纳入 CUDA 迁移范围。
+- 每个 wall 均先真实复现再修：baseline configure 失败（`build/baseline_configure.log`）、softmax 编译失败（`build/compile.log`）均有实测错误证据；本次 75 例 ctest 失败也已实跑复现（`test/test.log`），确认为缺数据、非 CoreX/CUDA 缺陷。
+- blocker 分类见 `blockers.json`：3 个与 CUDA 直接相关的均为 workaround-able 且已解决；#4（OpenCV/pipeline 示例链接/头文件卫生）与 CUDA 后端无关，超出范围；#5（本次新增，记录 75 个 CPU 参考 ONNX 算子测试缺外部 onnx_node 数据，属合法跳过/超范围）。
 - 无 terminal blocker。
