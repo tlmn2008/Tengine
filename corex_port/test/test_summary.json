@@ -1,20 +1,12 @@
 {
-  "suite": "Full relevant test suite = repository ctest collection (75 ONNX operator tests, tests/op/test_onnx_op_*.cpp, CPU reference backend) + CUDA-backend on-GPU parity harness (9 ImageNet-style models). This file is a completeness-correction re-run: the previous record ran ONLY the 9-model CUDA demo and reported 9/9 as the whole suite.",
-  "run_command": "(cd build && ctest --output-on-failure -V --timeout 120)  # 75 registered onnx op tests, CPU reference backend  ;  bash corex_port/test/run_tests.sh  # 9-model CUDA-vs-CPU top-5 parity on GPU 1",
-  "scope_note": "Only PART B (9 models via tm_classification_cuda) exercises the migrated CUDA backend. PART A (all 75 ctest onnx op tests) runs on the Tengine CPU reference backend via create_graph(nullptr,...) and does NOT touch CUDA; the test binaries hardcode the default (CPU) context so there is no env/flag to point them at the CUDA backend without source edits. All 75 fail at model-load ('cannot open file ../onnx_node/<op>/onnx.tmfile') because the required per-op ONNX node model/tensor data cannot be produced or located here (verified via Failure-Gate probe, see test.log PROBE + below). They never reach inference, so this is not a CoreX/CUDA defect; counted as legitimate skips and out of CUDA migration scope.",
+  "suite": "Full relevant test suite = repository's complete registered ctest collection (75 ONNX operator tests, tests/op/test_onnx_op_*.cpp, Tengine CPU reference backend) + CUDA-backend on-GPU parity harness (9 ImageNet-style models). Completeness-correction re-run (v3): with onnx 1.22.0 now installed, the required ONNX node test data was generated and all 75 op tests were actually executed (they reach inference).",
+  "run_command": "bash corex_port/test/gen_onnx_node_data.sh && python3 corex_port/test/regen_hard_ops.py  # generate ../onnx_node/<op>/{onnx.tmfile,test_data_set_*/*.pb} from onnx backend node data via Tengine convert_tool ; (cd build && ctest --output-on-failure -V --timeout 120)  # 75 onnx op tests, CPU reference backend ; bash corex_port/test/run_tests.sh  # 9-model CUDA-vs-CPU top-5 parity on GPU 1",
+  "scope_note": "PART A (75 ctest onnx op tests) runs on the Tengine CPU REFERENCE backend via create_graph(nullptr,...) and does NOT exercise the CUDA backend (out of strict CUDA migration scope); they are nonetheless executed for real per the completeness rule. PART B (9 models via tm_classification_cuda) is the portion that actually exercises the migrated CUDA backend. Data for the 75 op tests was produced from the installed onnx package's ONNX backend node conformance data (onnx/backend/test/data/node/) converted to Tengine .tmfile with Tengine's own convert_tool; 10 ops whose stock models use opset-25 (axes/pads moved to inputs) or omit a required attr were regenerated at a Tengine-parseable opset (see regen_hard_ops.py).",
   "tests_run": 84,
-  "tests_passed": 9,
-  "tests_failed": 0,
-  "tests_skipped": 75,
-  "raw_ctest_result": "ctest exit=8: 75/75 Failed, 100% with 'cannot open file ../onnx_node/<op>/onnx.tmfile -> Create graph failed' (missing external test data at load time; no inference reached). Full verbose output is in test.log PART A. Reclassified here as skipped(legitimate), NOT passed.",
-  "skipped_reasons": [
-    {
-      "reason": "cannot open file ../onnx_node/<op>/onnx.tmfile — required per-op ONNX node model/tensor data cannot be produced or located: onnx python pkg NOT importable by any system interpreter (only onnxruntime-gpu is installed, which ships neither the ONNX node conformance data backend/test/data/node/* nor the onnx.helper authoring API, and itself fails to import: libtvm.so missing); no onnx_node/model.onnx node data exists anywhere on host; onnx must not be installed/built/vendored per instruction.",
-      "count": 75,
-      "legitimate": true,
-      "note": "跟进复核(v2)：用户称 onnx 已系统安装，但经 Failure-Gate 实测证伪——任何系统解释器 `import onnx` 均失败(`from onnx import helper` ImportError)，全机唯一 onnx 家族包是 onnxruntime-gpu(且因缺 libtvm.so 无法加载)，它既不含 ONNX 节点一致性测试数据(backend/test/data/node/test_*)，也不含用于构建模型的 onnx.helper API；全盘 find 未见任何 onnx_node 目录或节点级 model.onnx(仅有 Tengine 自带 mnist.onnx 与 onnxruntime 的 3 个 demo 模型，均非本测试所需)。因此这 75 个 ctest ONNX 算子测试所需的 ../onnx_node/<op>/{onnx.tmfile,test_data_set_0/*.pb} 无法生成或定位(且禁止安装/vendor onnx)。它们全部跑在 CPU 参考后端(create_graph(nullptr,...))、不经过 CUDA、属迁移范围外，且在加载模型阶段即失败、从未进入推理——非 CoreX/CUDA 缺陷。原始 ctest 判定 75 Failed(退出码 8，同一 cannot-open-file 原因)已完整保留在 test.log PART A；此处如实归类为 legitimate 跳过，未计为通过。证据见 test.log PROBE 段。75 个测试二进制均已用 CoreX clang++ 编译通过。"
-    }
-  ],
+  "tests_passed": 77,
+  "tests_failed": 7,
+  "tests_skipped": 0,
+  "onnx_op_ctest_result": "75 ONNX op tests executed on the CPU reference backend: 68 passed, 7 failed (raw ctest exit=8, 91% passed). The 7 failures are pre-existing Tengine CPU-reference-backend defects, NOT CoreX/CUDA and NOT missing data (all reach inference): 4 conv tests (basic_conv_with_padding, basic_conv_without_padding, conv_with_strides_no_padding, conv_with_strides_padding) output all-zeros because the harness fills the weight buffer (input_1) AFTER prerun_graph, so Tengine prepacks zero conv weights; batchnorm_example -> 'free(): invalid size' abort at teardown; dropout_default -> computes correctly ('test pass') then aborts with heap corruption ('register_batchnorm_ref_op() failed' / 'free(): invalid next size'); pad_reflect -> 'double free or corruption' abort at teardown. Full per-case output in test.log PART A2.",
   "metrics": [
     {
       "name": "cuda_backend_classification_parity",
@@ -26,21 +18,21 @@
       "source": "corex_port/test/run_tests.sh"
     },
     {
-      "name": "onnx_op_ctest_verified_pass_rate",
+      "name": "onnx_op_ctest_pass_rate",
       "metric_type": "pass_rate",
-      "value": 0.0,
+      "value": 0.9067,
       "unit": "ratio",
-      "config": "75 registered ONNX op ctests (CPU reference); 0 verified-pass, 75 skipped for missing external onnx_node data; raw ctest=75 Failed on load",
+      "config": "68/75 registered ONNX op ctests pass on Tengine CPU reference backend; 7 fail (pre-existing Tengine CPU-backend defects, not CoreX/CUDA)",
       "source": "(cd build && ctest --output-on-failure -V --timeout 120)"
     },
-    {"name": "squeezenet_v1.1_cuda_latency", "metric_type": "latency", "value": 1.71, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
-    {"name": "mobilenet_cuda_latency", "metric_type": "latency", "value": 1.52, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
-    {"name": "mobilenet_v2_cuda_latency", "metric_type": "latency", "value": 2.79, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
-    {"name": "googlenet_cuda_latency", "metric_type": "latency", "value": 20.91, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
-    {"name": "resnet18_cuda_latency", "metric_type": "latency", "value": 1.97, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "squeezenet_v1.1_cuda_latency", "metric_type": "latency", "value": 1.88, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "mobilenet_cuda_latency", "metric_type": "latency", "value": 1.59, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "mobilenet_v2_cuda_latency", "metric_type": "latency", "value": 1.48, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "googlenet_cuda_latency", "metric_type": "latency", "value": 20.90, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "resnet18_cuda_latency", "metric_type": "latency", "value": 1.96, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
     {"name": "resnet50_cuda_latency", "metric_type": "latency", "value": 4.02, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
-    {"name": "shufflenet_v2_cuda_latency", "metric_type": "latency", "value": 4.03, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
-    {"name": "inception_v3_cuda_latency", "metric_type": "latency", "value": 5.44, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
-    {"name": "vgg16_cuda_latency", "metric_type": "latency", "value": 3.96, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"}
+    {"name": "shufflenet_v2_cuda_latency", "metric_type": "latency", "value": 3.06, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "inception_v3_cuda_latency", "metric_type": "latency", "value": 5.23, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"},
+    {"name": "vgg16_cuda_latency", "metric_type": "latency", "value": 4.02, "unit": "ms", "config": "batch=1 224x224, min of 3", "reference": "cpu reference backend", "device": "GPU 1", "source": "tm_classification_cuda"}
   ]
 }

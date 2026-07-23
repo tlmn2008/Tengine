@@ -30,23 +30,25 @@
 
 - **编译**：`success`。CUDA 后端库 `libtengine-lite.so` / `libtengine-lite-static.a`、全部 13 个 `.cu` 算子、CUDA 示例 `tm_classification_cuda`、以及**全部 75 个 ONNX 算子测试二进制 + 21 个 model 测试二进制**均用 CoreX clang++ 编译通过（`build/compile_tests.log`）。唯一编译报错集中在 `examples/`（~48 个 OpenCV 图像 demo + 3 个 pipeline 示例，74 组 error 全部在 `examples/`，0 组在 `tests/`），即 blocker #4，与 CUDA 后端正交、超出迁移范围。
 
-- **测试全量（84 例）**：`partial_pass` —— tests_run=84，passed=9，failed=0，skipped=75。分两部分：
+- **测试全量（84 例）**：`partial_pass` —— tests_run=84，passed=77，failed=7，skipped=0。分两部分：
 
-  1. **PART A — 完整 ctest 集合：75 个 ONNX 算子测试（`tests/op/test_onnx_op_*.cpp`）**。这些用 `create_graph(nullptr, "tengine", model)` 跑在 **CPU 参考后端**，**完全不经过 CUDA 后端**（测试源码硬编码默认 CPU context，无 env/flag 可切到 CUDA，除非改源码），属 CUDA 迁移范围之外。原始 `ctest --output-on-failure -V`（退出码 8）判定 **75/75 Failed**，失败原因 100% 相同：`cannot open file ../onnx_node/<op>/onnx.tmfile → Create graph failed`，在**加载模型阶段即失败、从未进入推理**。
+  1. **PART A — 完整 ctest 集合：75 个 ONNX 算子测试（`tests/op/test_onnx_op_*.cpp`），真实执行**。这些用 `create_graph(nullptr, "tengine", model)` 跑在 **CPU 参考后端**，**不经过 CUDA 后端**，属 CUDA 迁移范围之外；但按完整性红线本次**真实跑通到推理**：**68 通过 / 7 失败**（`ctest` 退出码 8，91%）。
 
-     **v2 复核（针对“onnx 已系统安装，缺数据不再算合法跳过”的跟进）**：我按 Failure Gate 实测求证能否用已装 onnx 生成/定位这些数据，结论是**当前环境 onnx 事实上并未安装、数据无法生成或定位**：
-       - 所有系统解释器 `import onnx` 均 `ModuleNotFoundError`，`from onnx import helper` 亦 `ImportError`；`pip`/`dpkg` 均无 onnx 包。
-       - 全机唯一 onnx 家族包是 `onnxruntime-gpu`（且因缺 `libtvm.so` 连自身都 import 失败），它**既不含** ONNX 节点一致性测试数据（`onnx/backend/test/data/node/test_*`，即本测试所需的 `model.onnx`+`input/output.pb` 来源），**也不含**用于构造模型的 `onnx.helper` API。
-       - 全盘 `find` 未见任何 `onnx_node` 目录或节点级 `model.onnx`（仅有 Tengine 自带 `tools/align_tool/mnist.onnx` 与 onnxruntime 的 3 个 demo 模型 logreg_iris/mul_1/sigmoid，均非本测试所需）。
-       - 生成 `onnx.tmfile` 需先有 `model.onnx`（要 `onnx.helper` 构造，缺）并用 Tengine convert_tool 转换；参考张量也需 onnx。这些都要求安装/vendor onnx——**被明令禁止**。
+     **数据生成（v3，onnx 1.22.0 已真正安装）**：确认 `onnx` 可导入、`onnx/backend/test/data/node` 含 1765 个节点目录。构建 Tengine `convert_tool`（`-DTENGINE_BUILD_CONVERT_TOOL=ON`），对每个算子把 onnx 后端节点的 `model.onnx` 转成 Tengine `onnx.tmfile`、并拷贝 `test_data_set_*/*.pb` 到 `../onnx_node/<op>/`（脚本 `corex_port/test/gen_onnx_node_data.sh`，65/75 直接转换成功）。其余 10 个：stock onnx 1.22 用 **opset-25**（Unsqueeze/Pad 把 `axes`/`pads` 从属性改为输入 → 老 convert_tool 段错误）或缺必需属性（BatchNormalization 省略 `epsilon` → convert 抛 `cannot find attr epsilon`），用 `onnx.helper` 以 Tengine 可解析的 opset 重建 / 补默认 `epsilon`（脚本 `corex_port/test/regen_hard_ops.py`）。最终 75/75 均有数据。
+
+     **7 个失败——均为 Tengine CPU 参考后端既有缺陷，与 CoreX/CUDA 无关、也非缺数据（都已进入推理）**：
+       - **4 个卷积**（basic_conv_with_padding / basic_conv_without_padding / conv_with_strides_no_padding / conv_with_strides_padding）：输出全 0（`a=0.0` vs 参考 `b=12/54`）。根因是测试用例本身的顺序问题——先 `prerun_graph`（此时 Tengine 已把卷积权重预打包）**之后**才 `get_pb_data` 填充权重缓冲区（input_1），故卷积用到的是全 0 权重。属 Tengine 测试脚手架/CPU 后端既有问题。
+       - **batchnorm_example**：teardown 阶段 `free(): invalid size` 崩溃中止。
+       - **dropout_default**：推理数值正确（打印 `test pass`）后在 teardown 崩溃（`register_batchnorm_ref_op() failed` + 堆破坏）。
+       - **pad_reflect**：teardown 阶段 `double free or corruption` 崩溃。
      
-     故这 75 例的 `../onnx_node/<op>/{onnx.tmfile,test_data_set_0/*.pb}` 无法生成或定位，仍归类为 **skipped(legitimate)**，但给出了**精确原因**（不再是笼统“缺数据”）。证据见 `test/test.log` 的 PROBE 段与 PART A；原始 75 Failed 完整保留，绝未从总数剔除，也未计为通过。若日后真正安装 onnx（含节点测试数据/`onnx.helper`），应转换生成数据后重跑，将这 75 例改判为真实 pass/fail。
+     按红线，崩溃/不匹配一律计入 **failed**（不跳过、不剔除）。逐例完整输出见 `test/test.log` 的 PART A1（数据生成）与 PART A2（ctest 全量）。
 
-  2. **PART B — CUDA 后端 on-GPU 证据：9 个 ImageNet 类分类基准模型的 CUDA↔CPU top-5 数值对齐**。在 GPU 1 上真实运行，**9/9 PASS**（本次重跑延迟：squeezenet 1.71 / mobilenet 1.52 / mobilenet_v2 2.79 / googlenet 20.91 / resnet18 1.97 / resnet50 4.02 / shufflenet_v2 4.03 / inception_v3 5.44 / vgg16 3.96 ms）。这是唯一真正**行使 CUDA 后端**的部分。说明：`*_benchmark.tmfile` 仅含结构无权重，CPU/CUDA top-5 皆恒定值，断言的是 **CUDA==CPU 对齐 + GPU 无错退出**。
+  2. **PART B — CUDA 后端 on-GPU 证据：9 个 ImageNet 类分类基准模型的 CUDA↔CPU top-5 数值对齐**。在 GPU 1 上真实运行，**9/9 PASS**（本次延迟：squeezenet 1.88 / mobilenet 1.59 / mobilenet_v2 1.48 / googlenet 20.90 / resnet18 1.96 / resnet50 4.02 / shufflenet_v2 3.06 / inception_v3 5.23 / vgg16 4.02 ms）。这是唯一真正**行使 CUDA 后端**的部分。`*_benchmark.tmfile` 仅含结构无权重，断言的是 **CUDA==CPU 对齐 + GPU 无错退出**。
 
-- **诚实结论**：CUDA 后端本身（编译 + on-GPU 运行 + 与 CPU 对齐）已验证通过（9/9）；但仓库注册的 ctest 主体（75 个 CPU 参考算子测试）因缺外部数据无法执行、未被验证。因此整体判定为 **partial / partial_pass**（而非 migrated），以免像上一版那样高估。计数、run_command、范围说明见 `test/test_summary.json`；权威逐例日志见 `test/test.log`。
+- **诚实结论**：CUDA 后端（编译 + on-GPU 运行 + 与 CPU 对齐）验证通过（9/9）；仓库注册的 75 个 CPU 参考算子测试本次已**真实执行**，68 通过、7 失败，7 个失败均为 Tengine CPU 后端既有缺陷（非 CoreX/CUDA、非缺数据）。整体判定 **partial / partial_pass**（存在 7 个真实失败）。计数、run_command、范围与失败明细见 `test/test_summary.json`；权威逐例日志见 `test/test.log`。
 
 ## Failure Gate
-- 每个 wall 均先真实复现再修：baseline configure 失败（`build/baseline_configure.log`）、softmax 编译失败（`build/compile.log`）均有实测错误证据；本次 75 例 ctest 失败也已实跑复现（`test/test.log`），确认为缺数据、非 CoreX/CUDA 缺陷。
-- blocker 分类见 `blockers.json`：3 个与 CUDA 直接相关的均为 workaround-able 且已解决；#4（OpenCV/pipeline 示例链接/头文件卫生）与 CUDA 后端无关，超出范围；#5（本次新增，记录 75 个 CPU 参考 ONNX 算子测试缺外部 onnx_node 数据，属合法跳过/超范围）。
+- 每个 wall 均先真实复现再修：baseline configure 失败（`build/baseline_configure.log`）、softmax 编译失败（`build/compile.log`）均有实测错误证据；本次 75 例 ctest 也已用真实生成的数据实跑复现（`test/test.log`），7 个失败确认为 Tengine CPU 后端既有缺陷、非 CoreX/CUDA。
+- blocker 分类见 `blockers.json`：3 个与 CUDA 直接相关的均为 workaround-able 且已解决；#4（OpenCV/pipeline 示例链接/头文件卫生）与 CUDA 后端无关，超出范围；#5（v3 已解决：用已装 onnx 1.22 + Tengine convert_tool 生成全部 75 个算子的 onnx_node 数据并真实执行，68 通过/7 失败，7 个失败为 Tengine CPU 后端既有缺陷）。
 - 无 terminal blocker。

@@ -13,10 +13,10 @@
   "test_status": "partial_pass",
   "overall_status": "partial",
   "tests_run": 84,
-  "tests_passed": 9,
-  "tests_failed": 0,
-  "tests_skipped": 75,
-  "test_scope_note": "Completeness-correction re-run. Full relevant suite = 75 registered ctest ONNX op tests (CPU reference backend, out of CUDA scope) + 9 CUDA-backend on-GPU parity cases. Only the 9 exercise CUDA (9/9 pass). The 75 op tests fail at model-load for missing external onnx_node data (onnx not installed/vendored) and are counted as legitimate skips; raw ctest = 75 Failed on load. See test/test_summary.json + agent/session_notes.md.",
+  "tests_passed": 77,
+  "tests_failed": 7,
+  "tests_skipped": 0,
+  "test_scope_note": "Completeness-correction re-run (v3): onnx 1.22.0 now installed, so the required ONNX node test data was generated (onnx backend node data -> Tengine .tmfile via convert_tool; 10 opset-incompatible models regenerated) and all 75 registered ctest ONNX op tests were actually EXECUTED (reach inference), plus the 9 CUDA-backend on-GPU parity cases. Totals: 84 run = 77 passed + 7 failed + 0 skipped. CUDA-exercising portion (9 models) = 9/9 pass. CPU-reference ONNX op ctests = 68/75 pass; the 7 failures are pre-existing Tengine CPU-reference-backend defects (4 conv all-zeros from weight-buffer-filled-after-prerun; batchnorm_example/dropout_default/pad_reflect heap-corruption aborts at teardown) — NOT CoreX/CUDA and NOT data issues. See test/test_summary.json + agent/session_notes.md.",
 
   "github": {
     "fork_url": "https://github.com/tlmn2008/Tengine",

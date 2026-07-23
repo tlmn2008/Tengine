@@ -1,18 +1,19 @@
-# Tengine CoreX (ivcore11) FULL test-suite re-run — device = GPU 1 (CUDA_VISIBLE_DEVICES=1).
-# Completeness correction: run the repo's complete registered ctest collection
-# (75 ONNX op tests, CPU reference backend) AND the CUDA-backend on-GPU parity
-# harness (9 models). Full output -> corex_port/test/test.log.
+# Tengine CoreX (ivcore11) FULL test-suite re-run (v3) — device = GPU 1 (CUDA_VISIBLE_DEVICES=1).
+# onnx 1.22.0 is installed, so the ONNX node test data is generated and the 75 ONNX op
+# ctests are actually executed. Full output -> corex_port/test/test.log.
 source corex_port/env/corex_env.sh
 
-# Build the full test suite (CUDA backend ON + tests ON). Protobuf 3.21.12 enables
-# the onnx op tests; all 75 onnx op + 21 model test binaries compile with CoreX clang++.
-cmake -S . -B build -DTENGINE_ENABLE_CUDA=ON -DTENGINE_BUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Release
-cmake --build build -j"$(nproc)" -- -k        # -k: keep going past the out-of-scope OpenCV example link errors (blocker #4)
+# Build test suite + convert_tool (CUDA ON + tests ON). Protobuf 3.21.12 enables onnx op tests.
+cmake -S . -B build -DTENGINE_ENABLE_CUDA=ON -DTENGINE_BUILD_TESTS=ON -DTENGINE_BUILD_CONVERT_TOOL=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j"$(nproc)" -- -k        # -k: keep going past out-of-scope OpenCV example errors (blocker #4)
 
-# PART A — full ctest collection (75 ONNX op tests, Tengine CPU REFERENCE backend; does NOT exercise CUDA).
-# These need external ONNX node test data (../onnx_node/<op>/) which is absent here, so all 75 fail at
-# model-load ("cannot open file ... onnx.tmfile"); counted as legitimate skips (missing data), out of CUDA scope.
-( cd build && ctest --output-on-failure -V --timeout 120 )
+# Generate ../onnx_node/<op>/{onnx.tmfile,test_data_set_*/*.pb} for all 75 op tests from the
+# installed onnx backend node data, via Tengine's convert_tool (onnx2tengine):
+bash corex_port/test/gen_onnx_node_data.sh          # 65/75 convert directly
+python3 corex_port/test/regen_hard_ops.py           # 10 opset-25 / missing-attr models rebuilt via onnx.helper
 
-# PART B — CUDA-backend evidence: on-GPU CUDA-vs-CPU top-5 parity over 9 bundled benchmark models (CUDA-exercising).
-bash corex_port/test/run_tests.sh
+# PART A — full ctest collection (75 ONNX op tests, Tengine CPU REFERENCE backend; not CUDA).
+( cd build && ctest --output-on-failure -V --timeout 120 )    # 68 pass, 7 fail (Tengine CPU-backend defects)
+
+# PART B — CUDA-backend evidence: on-GPU CUDA-vs-CPU top-5 parity over 9 benchmark models (CUDA-exercising).
+bash corex_port/test/run_tests.sh                   # 9/9 pass
