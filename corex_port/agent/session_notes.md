@@ -32,7 +32,15 @@
 
 - **测试全量（84 例）**：`partial_pass` —— tests_run=84，passed=9，failed=0，skipped=75。分两部分：
 
-  1. **PART A — 完整 ctest 集合：75 个 ONNX 算子测试（`tests/op/test_onnx_op_*.cpp`）**。这些用 `create_graph(nullptr, "tengine", model)` 跑在 **CPU 参考后端**，**完全不经过 CUDA 后端**（测试源码硬编码默认 CPU context，无 env/flag 可切到 CUDA，除非改源码），属 CUDA 迁移范围之外。原始 `ctest --output-on-failure -V`（退出码 8）判定 **75/75 Failed**，失败原因 100% 相同：`cannot open file ../onnx_node/<op>/onnx.tmfile → Create graph failed`，即缺少外部 ONNX 节点测试数据（`onnx.tmfile` + `input/output .pb`），在**加载模型阶段即失败、从未进入推理**。按用户要求 onnx 不得安装/pip/编译/vendor（系统仅有 `onnxruntime-gpu`，不含节点测试数据）。故这 75 例按“缺数据文件=合法跳过”（类比缺权重文件）归类为 **skipped(legitimate)**，未计为通过；完整逐例原始输出保留在 `test/test.log` PART A，绝未从总数中剔除。
+  1. **PART A — 完整 ctest 集合：75 个 ONNX 算子测试（`tests/op/test_onnx_op_*.cpp`）**。这些用 `create_graph(nullptr, "tengine", model)` 跑在 **CPU 参考后端**，**完全不经过 CUDA 后端**（测试源码硬编码默认 CPU context，无 env/flag 可切到 CUDA，除非改源码），属 CUDA 迁移范围之外。原始 `ctest --output-on-failure -V`（退出码 8）判定 **75/75 Failed**，失败原因 100% 相同：`cannot open file ../onnx_node/<op>/onnx.tmfile → Create graph failed`，在**加载模型阶段即失败、从未进入推理**。
+
+     **v2 复核（针对“onnx 已系统安装，缺数据不再算合法跳过”的跟进）**：我按 Failure Gate 实测求证能否用已装 onnx 生成/定位这些数据，结论是**当前环境 onnx 事实上并未安装、数据无法生成或定位**：
+       - 所有系统解释器 `import onnx` 均 `ModuleNotFoundError`，`from onnx import helper` 亦 `ImportError`；`pip`/`dpkg` 均无 onnx 包。
+       - 全机唯一 onnx 家族包是 `onnxruntime-gpu`（且因缺 `libtvm.so` 连自身都 import 失败），它**既不含** ONNX 节点一致性测试数据（`onnx/backend/test/data/node/test_*`，即本测试所需的 `model.onnx`+`input/output.pb` 来源），**也不含**用于构造模型的 `onnx.helper` API。
+       - 全盘 `find` 未见任何 `onnx_node` 目录或节点级 `model.onnx`（仅有 Tengine 自带 `tools/align_tool/mnist.onnx` 与 onnxruntime 的 3 个 demo 模型 logreg_iris/mul_1/sigmoid，均非本测试所需）。
+       - 生成 `onnx.tmfile` 需先有 `model.onnx`（要 `onnx.helper` 构造，缺）并用 Tengine convert_tool 转换；参考张量也需 onnx。这些都要求安装/vendor onnx——**被明令禁止**。
+     
+     故这 75 例的 `../onnx_node/<op>/{onnx.tmfile,test_data_set_0/*.pb}` 无法生成或定位，仍归类为 **skipped(legitimate)**，但给出了**精确原因**（不再是笼统“缺数据”）。证据见 `test/test.log` 的 PROBE 段与 PART A；原始 75 Failed 完整保留，绝未从总数剔除，也未计为通过。若日后真正安装 onnx（含节点测试数据/`onnx.helper`），应转换生成数据后重跑，将这 75 例改判为真实 pass/fail。
 
   2. **PART B — CUDA 后端 on-GPU 证据：9 个 ImageNet 类分类基准模型的 CUDA↔CPU top-5 数值对齐**。在 GPU 1 上真实运行，**9/9 PASS**（本次重跑延迟：squeezenet 1.71 / mobilenet 1.52 / mobilenet_v2 2.79 / googlenet 20.91 / resnet18 1.97 / resnet50 4.02 / shufflenet_v2 4.03 / inception_v3 5.44 / vgg16 3.96 ms）。这是唯一真正**行使 CUDA 后端**的部分。说明：`*_benchmark.tmfile` 仅含结构无权重，CPU/CUDA top-5 皆恒定值，断言的是 **CUDA==CPU 对齐 + GPU 无错退出**。
 

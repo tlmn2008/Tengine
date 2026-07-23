@@ -1,27 +1,57 @@
 ################################################################################
-# Tengine — CoreX (ivcore11) FULL TEST-SUITE re-run (completeness correction)
+# Tengine — CoreX (ivcore11) FULL TEST-SUITE re-run (completeness correction, v2)
 # Device: GPU 1 (Iluvatar BI-V150), CUDA_VISIBLE_DEVICES=1
 #
-# This log supersedes the previous under-reported run (which executed only the
-# 9-model tm_classification_cuda demo and reported 9/9 as the whole suite).
+# v2 follow-up: re-investigated whether the 75 test_onnx_op_* tests can actually
+# run now (claim: onnx installed system-wide). Failure-Gate probe below proves
+# onnx is NOT importable and the required ONNX node conformance data cannot be
+# produced/located without installing/vendoring onnx (forbidden). The 75 remain
+# genuinely unrunnable (skipped, legitimate) with a precise reason; raw ctest
+# still reproduced as 75 Failed at model-load. CUDA parity kept at 9/9.
 #
-# It contains TWO parts:
-#   PART A — the repository's full registered ctest collection
-#            (75 ONNX operator tests, tests/op/test_onnx_op_*.cpp), built with
-#            -DTENGINE_BUILD_TESTS=ON. These run on the Tengine CPU REFERENCE
-#            backend (create_graph(nullptr,...)) and DO NOT exercise the CUDA
-#            backend. They require external ONNX node test data (onnx_node/)
-#            that is not present in the repo/environment (onnx not to be
-#            installed/vendored per instruction), so every case fails at the
-#            model-load step ("cannot open file .../onnx.tmfile").
-#   PART B — the CUDA-backend evidence: on-GPU CUDA vs CPU top-5 parity over the
-#            9 bundled ImageNet-style benchmark models. THIS is the portion that
-#            actually exercises the migrated CUDA backend.
+# Parts:  PROBE — onnx availability Failure-Gate evidence
+#         PART A — full ctest collection (75 ONNX op tests, CPU reference backend)
+#         PART B — CUDA-backend on-GPU parity (9 models, CUDA-exercising)
 ################################################################################
+
+===== ONNX AVAILABILITY PROBE (Failure Gate re-investigation, 2026-07-23T11:37:00+08:00) =====
+Goal: can the ../onnx_node/<op>/{onnx.tmfile,test_data_set_0/*.pb} data required by the
+75 test_onnx_op_* tests be produced/located using an installed onnx? Probing:
+
+-- import onnx (all interpreters) --
+/usr/bin/python3: ModuleNotFoundError: No module named 'onnx'
+/usr/local/bin/python3: ModuleNotFoundError: No module named 'onnx'
+/usr/bin/python3.12: ModuleNotFoundError: No module named 'onnx'
+
+-- onnx.helper (model-authoring API) --
+ModuleNotFoundError: No module named 'onnx'
+-- pip/dpkg onnx package --
+pip: onnx NOT installed
+dpkg: no onnx package
+-- installed onnx-family packages --
+onnxruntime-gpu                          1.17.1+corex.4.5.0.20260712
+
+-- ONNX node conformance data (backend/test/data/node) anywhere? --
+(none found if blank above)
+-- onnx_node dir anywhere? --
+(none found if blank above)
+-- all *.onnx on host --
+/home/repos/Tengine/tools/align_tool/mnist.onnx
+/usr/local/lib/python3.12/site-packages/onnxruntime/datasets/logreg_iris.onnx
+/usr/local/lib/python3.12/site-packages/onnxruntime/datasets/mul_1.onnx
+/usr/local/lib/python3.12/site-packages/onnxruntime/datasets/sigmoid.onnx
+
+VERDICT: onnx is NOT importable by any system interpreter; onnxruntime-gpu ships neither the
+ONNX node conformance test data nor the onnx.helper authoring API (and fails to load: libtvm.so
+missing). No onnx_node/model.onnx node data exists on host. onnx must NOT be installed/vendored
+per instruction. => The per-op node models/tensors cannot be produced or located; Tengine's 75
+onnx op tests cannot reach inference (they fail at create_graph model-load). Genuinely unrunnable.
 
 ==================== PART A: full ctest collection (75 ONNX op tests, CPU reference backend) ====================
 Build: -DTENGINE_ENABLE_CUDA=ON -DTENGINE_BUILD_TESTS=ON ; all 75 test_onnx_op_* binaries compiled cleanly with CoreX clang++.
 Command: (cd build && ctest --output-on-failure -V --timeout 120)
+Result: raw ctest exit=8, 75/75 Failed, 100% "cannot open file ../onnx_node/<op>/onnx.tmfile -> Create graph failed"
+        (data-load failure; inference never reached). See PROBE above for why the data cannot be produced/located.
 UpdateCTestConfiguration  from :/home/repos/Tengine/build/DartConfiguration.tcl
 UpdateCTestConfiguration  from :/home/repos/Tengine/build/DartConfiguration.tcl
 Test project /home/repos/Tengine/build
@@ -51,7 +81,7 @@ test 2
 2: Test timeout computed to be: 120
 2: cannot open file ../onnx_node/test_acos/onnx.tmfile
 2: Create graph failed.
- 2/75 Test  #2: test_onnx_op_acos ..............................................***Failed    0.10 sec
+ 2/75 Test  #2: test_onnx_op_acos ..............................................***Failed    0.08 sec
 cannot open file ../onnx_node/test_acos/onnx.tmfile
 Create graph failed.
 
@@ -63,7 +93,7 @@ test 3
 3: Test timeout computed to be: 120
 3: cannot open file ../onnx_node/test_add/onnx.tmfile
 3: Create graph failed.
- 3/75 Test  #3: test_onnx_op_add ...............................................***Failed    0.10 sec
+ 3/75 Test  #3: test_onnx_op_add ...............................................***Failed    0.08 sec
 cannot open file ../onnx_node/test_add/onnx.tmfile
 Create graph failed.
 
@@ -135,7 +165,7 @@ test 9
 9: Test timeout computed to be: 120
 9: cannot open file ../onnx_node/test_asin/onnx.tmfile
 9: Create graph failed.
- 9/75 Test  #9: test_onnx_op_asin ..............................................***Failed    0.10 sec
+ 9/75 Test  #9: test_onnx_op_asin ..............................................***Failed    0.08 sec
 cannot open file ../onnx_node/test_asin/onnx.tmfile
 Create graph failed.
 
@@ -159,7 +189,7 @@ test 11
 11: Test timeout computed to be: 120
 11: cannot open file ../onnx_node/test_averagepool_2d_default/onnx.tmfile
 11: Create graph failed.
-11/75 Test #11: test_onnx_op_averagepool_2d_default ............................***Failed    0.08 sec
+11/75 Test #11: test_onnx_op_averagepool_2d_default ............................***Failed    0.10 sec
 cannot open file ../onnx_node/test_averagepool_2d_default/onnx.tmfile
 Create graph failed.
 
@@ -195,7 +225,7 @@ test 14
 14: Test timeout computed to be: 120
 14: cannot open file ../onnx_node/test_basic_conv_without_padding/onnx.tmfile
 14: Create graph failed.
-14/75 Test #14: test_onnx_op_basic_conv_without_padding ........................***Failed    0.08 sec
+14/75 Test #14: test_onnx_op_basic_conv_without_padding ........................***Failed    0.10 sec
 cannot open file ../onnx_node/test_basic_conv_without_padding/onnx.tmfile
 Create graph failed.
 
@@ -233,7 +263,7 @@ test 17
 17: Test timeout computed to be: 120
 17: cannot open file ../onnx_node/test_cast_DOUBLE_to_FLOAT/onnx.tmfile
 17: Create graph failed.
-17/75 Test #17: test_onnx_op_cast_double_to_float ..............................***Failed    0.08 sec
+17/75 Test #17: test_onnx_op_cast_double_to_float ..............................***Failed    0.10 sec
 cannot open file ../onnx_node/test_cast_DOUBLE_to_FLOAT/onnx.tmfile
 Create graph failed.
 
@@ -257,7 +287,7 @@ test 19
 19: Test timeout computed to be: 120
 19: cannot open file ../onnx_node/test_clip_example/onnx.tmfile
 19: Create graph failed.
-19/75 Test #19: test_onnx_op_clip_example ......................................***Failed    0.10 sec
+19/75 Test #19: test_onnx_op_clip_example ......................................***Failed    0.08 sec
 cannot open file ../onnx_node/test_clip_example/onnx.tmfile
 Create graph failed.
 
@@ -269,7 +299,7 @@ test 20
 20: Test timeout computed to be: 120
 20: cannot open file ../onnx_node/test_concat_2d_axis_0/onnx.tmfile
 20: Create graph failed.
-20/75 Test #20: test_onnx_op_concat_2d_axis_0 ..................................***Failed    0.10 sec
+20/75 Test #20: test_onnx_op_concat_2d_axis_0 ..................................***Failed    0.08 sec
 cannot open file ../onnx_node/test_concat_2d_axis_0/onnx.tmfile
 Create graph failed.
 
@@ -281,7 +311,7 @@ test 21
 21: Test timeout computed to be: 120
 21: cannot open file ../onnx_node/test_concat_2d_axis_1/onnx.tmfile
 21: Create graph failed.
-21/75 Test #21: test_onnx_op_concat_2d_axis_1 ..................................***Failed    0.08 sec
+21/75 Test #21: test_onnx_op_concat_2d_axis_1 ..................................***Failed    0.10 sec
 cannot open file ../onnx_node/test_concat_2d_axis_1/onnx.tmfile
 Create graph failed.
 
@@ -293,7 +323,7 @@ test 22
 22: Test timeout computed to be: 120
 22: cannot open file ../onnx_node/test_concat_3d_axis_0/onnx.tmfile
 22: Create graph failed.
-22/75 Test #22: test_onnx_op_concat_3d_axis_0 ..................................***Failed    0.10 sec
+22/75 Test #22: test_onnx_op_concat_3d_axis_0 ..................................***Failed    0.08 sec
 cannot open file ../onnx_node/test_concat_3d_axis_0/onnx.tmfile
 Create graph failed.
 
@@ -317,7 +347,7 @@ test 24
 24: Test timeout computed to be: 120
 24: cannot open file ../onnx_node/test_concat_3d_axis_2/onnx.tmfile
 24: Create graph failed.
-24/75 Test #24: test_onnx_op_concat_3d_axis_2 ..................................***Failed    0.10 sec
+24/75 Test #24: test_onnx_op_concat_3d_axis_2 ..................................***Failed    0.11 sec
 cannot open file ../onnx_node/test_concat_3d_axis_2/onnx.tmfile
 Create graph failed.
 
@@ -341,7 +371,7 @@ test 26
 26: Test timeout computed to be: 120
 26: cannot open file ../onnx_node/test_conv_with_strides_padding/onnx.tmfile
 26: Create graph failed.
-26/75 Test #26: test_onnx_op_conv_with_strides_padding .........................***Failed    0.08 sec
+26/75 Test #26: test_onnx_op_conv_with_strides_padding .........................***Failed    0.11 sec
 cannot open file ../onnx_node/test_conv_with_strides_padding/onnx.tmfile
 Create graph failed.
 
@@ -353,7 +383,7 @@ test 27
 27: Test timeout computed to be: 120
 27: cannot open file ../onnx_node/test_convtranspose_pad/onnx.tmfile
 27: Create graph failed.
-27/75 Test #27: test_onnx_op_convtranspose_pad .................................***Failed    0.10 sec
+27/75 Test #27: test_onnx_op_convtranspose_pad .................................***Failed    0.08 sec
 cannot open file ../onnx_node/test_convtranspose_pad/onnx.tmfile
 Create graph failed.
 
@@ -377,7 +407,7 @@ test 29
 29: Test timeout computed to be: 120
 29: cannot open file ../onnx_node/test_convtranspose/onnx.tmfile
 29: Create graph failed.
-29/75 Test #29: test_onnx_op_convtranspose .....................................***Failed    0.10 sec
+29/75 Test #29: test_onnx_op_convtranspose .....................................***Failed    0.08 sec
 cannot open file ../onnx_node/test_convtranspose/onnx.tmfile
 Create graph failed.
 
@@ -389,7 +419,7 @@ test 30
 30: Test timeout computed to be: 120
 30: cannot open file ../onnx_node/test_cos/onnx.tmfile
 30: Create graph failed.
-30/75 Test #30: test_onnx_op_cos ...............................................***Failed    0.08 sec
+30/75 Test #30: test_onnx_op_cos ...............................................***Failed    0.10 sec
 cannot open file ../onnx_node/test_cos/onnx.tmfile
 Create graph failed.
 
@@ -401,7 +431,7 @@ test 31
 31: Test timeout computed to be: 120
 31: cannot open file ../onnx_node/test_div/onnx.tmfile
 31: Create graph failed.
-31/75 Test #31: test_onnx_op_div ...............................................***Failed    0.08 sec
+31/75 Test #31: test_onnx_op_div ...............................................***Failed    0.10 sec
 cannot open file ../onnx_node/test_div/onnx.tmfile
 Create graph failed.
 
@@ -461,7 +491,7 @@ test 36
 36: Test timeout computed to be: 120
 36: cannot open file ../onnx_node/test_floor/onnx.tmfile
 36: Create graph failed.
-36/75 Test #36: test_onnx_op_floor .............................................***Failed    0.08 sec
+36/75 Test #36: test_onnx_op_floor .............................................***Failed    0.10 sec
 cannot open file ../onnx_node/test_floor/onnx.tmfile
 Create graph failed.
 
@@ -473,7 +503,7 @@ test 37
 37: Test timeout computed to be: 120
 37: cannot open file ../onnx_node/test_globalaveragepool/onnx.tmfile
 37: Create graph failed.
-37/75 Test #37: test_onnx_op_globalaveragepool .................................***Failed    0.10 sec
+37/75 Test #37: test_onnx_op_globalaveragepool .................................***Failed    0.08 sec
 cannot open file ../onnx_node/test_globalaveragepool/onnx.tmfile
 Create graph failed.
 
@@ -485,7 +515,7 @@ test 38
 38: Test timeout computed to be: 120
 38: cannot open file ../onnx_node/test_greater/onnx.tmfile
 38: Create graph failed.
-38/75 Test #38: test_onnx_op_greater ...........................................***Failed    0.10 sec
+38/75 Test #38: test_onnx_op_greater ...........................................***Failed    0.08 sec
 cannot open file ../onnx_node/test_greater/onnx.tmfile
 Create graph failed.
 
@@ -497,7 +527,7 @@ test 39
 39: Test timeout computed to be: 120
 39: cannot open file ../onnx_node/test_gru_defaults/onnx.tmfile
 39: Create graph failed.
-39/75 Test #39: test_onnx_op_gru_defaults ......................................***Failed    0.10 sec
+39/75 Test #39: test_onnx_op_gru_defaults ......................................***Failed    0.08 sec
 cannot open file ../onnx_node/test_gru_defaults/onnx.tmfile
 Create graph failed.
 
@@ -521,7 +551,7 @@ test 41
 41: Test timeout computed to be: 120
 41: cannot open file ../onnx_node/test_hardsigmoid/onnx.tmfile
 41: Create graph failed.
-41/75 Test #41: test_onnx_op_hardsigmoid .......................................***Failed    0.10 sec
+41/75 Test #41: test_onnx_op_hardsigmoid .......................................***Failed    0.08 sec
 cannot open file ../onnx_node/test_hardsigmoid/onnx.tmfile
 Create graph failed.
 
@@ -545,7 +575,7 @@ test 43
 43: Test timeout computed to be: 120
 43: cannot open file ../onnx_node/test_instancenorm_example/onnx.tmfile
 43: Create graph failed.
-43/75 Test #43: test_onnx_op_instancenorm_example ..............................***Failed    0.11 sec
+43/75 Test #43: test_onnx_op_instancenorm_example ..............................***Failed    0.10 sec
 cannot open file ../onnx_node/test_instancenorm_example/onnx.tmfile
 Create graph failed.
 
@@ -581,7 +611,7 @@ test 46
 46: Test timeout computed to be: 120
 46: cannot open file ../onnx_node/test_log/onnx.tmfile
 46: Create graph failed.
-46/75 Test #46: test_onnx_op_log ...............................................***Failed    0.08 sec
+46/75 Test #46: test_onnx_op_log ...............................................***Failed    0.10 sec
 cannot open file ../onnx_node/test_log/onnx.tmfile
 Create graph failed.
 
@@ -593,7 +623,7 @@ test 47
 47: Test timeout computed to be: 120
 47: cannot open file ../onnx_node/test_pad_reflect/onnx.tmfile
 47: Create graph failed.
-47/75 Test #47: test_onnx_op_pad_reflect .......................................***Failed    0.08 sec
+47/75 Test #47: test_onnx_op_pad_reflect .......................................***Failed    0.11 sec
 cannot open file ../onnx_node/test_pad_reflect/onnx.tmfile
 Create graph failed.
 
@@ -605,7 +635,7 @@ test 48
 48: Test timeout computed to be: 120
 48: cannot open file ../onnx_node/test_lstm_defaults/onnx.tmfile
 48: Create graph failed.
-48/75 Test #48: test_onnx_op_lstm_defaults .....................................***Failed    0.10 sec
+48/75 Test #48: test_onnx_op_lstm_defaults .....................................***Failed    0.08 sec
 cannot open file ../onnx_node/test_lstm_defaults/onnx.tmfile
 Create graph failed.
 
@@ -617,7 +647,7 @@ test 49
 49: Test timeout computed to be: 120
 49: cannot open file ../onnx_node/test_lstm_with_initial_bias/onnx.tmfile
 49: Create graph failed.
-49/75 Test #49: test_onnx_op_lstm_with_initial_bias ............................***Failed    0.10 sec
+49/75 Test #49: test_onnx_op_lstm_with_initial_bias ............................***Failed    0.08 sec
 cannot open file ../onnx_node/test_lstm_with_initial_bias/onnx.tmfile
 Create graph failed.
 
@@ -629,7 +659,7 @@ test 50
 50: Test timeout computed to be: 120
 50: cannot open file ../onnx_node/test_matmul_2d/onnx.tmfile
 50: Create graph failed.
-50/75 Test #50: test_onnx_op_matmul_2d .........................................***Failed    0.08 sec
+50/75 Test #50: test_onnx_op_matmul_2d .........................................***Failed    0.10 sec
 cannot open file ../onnx_node/test_matmul_2d/onnx.tmfile
 Create graph failed.
 
@@ -653,7 +683,7 @@ test 52
 52: Test timeout computed to be: 120
 52: cannot open file ../onnx_node/test_matmul_4d/onnx.tmfile
 52: Create graph failed.
-52/75 Test #52: test_onnx_op_matmul_4d .........................................***Failed    0.10 sec
+52/75 Test #52: test_onnx_op_matmul_4d .........................................***Failed    0.11 sec
 cannot open file ../onnx_node/test_matmul_4d/onnx.tmfile
 Create graph failed.
 
@@ -665,7 +695,7 @@ test 53
 53: Test timeout computed to be: 120
 53: cannot open file ../onnx_node/test_maxpool_2d_default/onnx.tmfile
 53: Create graph failed.
-53/75 Test #53: test_onnx_op_maxpool_2d_default ................................***Failed    0.10 sec
+53/75 Test #53: test_onnx_op_maxpool_2d_default ................................***Failed    0.07 sec
 cannot open file ../onnx_node/test_maxpool_2d_default/onnx.tmfile
 Create graph failed.
 
@@ -677,7 +707,7 @@ test 54
 54: Test timeout computed to be: 120
 54: cannot open file ../onnx_node/test_maxpool_2d_pads/onnx.tmfile
 54: Create graph failed.
-54/75 Test #54: test_onnx_op_maxpool_2d_pads ...................................***Failed    0.07 sec
+54/75 Test #54: test_onnx_op_maxpool_2d_pads ...................................***Failed    0.10 sec
 cannot open file ../onnx_node/test_maxpool_2d_pads/onnx.tmfile
 Create graph failed.
 
@@ -713,7 +743,7 @@ test 57
 57: Test timeout computed to be: 120
 57: cannot open file ../onnx_node/test_reciprocal/onnx.tmfile
 57: Create graph failed.
-57/75 Test #57: test_onnx_op_reciprocal ........................................***Failed    0.10 sec
+57/75 Test #57: test_onnx_op_reciprocal ........................................***Failed    0.08 sec
 cannot open file ../onnx_node/test_reciprocal/onnx.tmfile
 Create graph failed.
 
@@ -725,7 +755,7 @@ test 58
 58: Test timeout computed to be: 120
 58: cannot open file ../onnx_node/test_reduce_log_sum_default/onnx.tmfile
 58: Create graph failed.
-58/75 Test #58: test_onnx_op_reduce_log_sum_default ............................***Failed    0.10 sec
+58/75 Test #58: test_onnx_op_reduce_log_sum_default ............................***Failed    0.09 sec
 cannot open file ../onnx_node/test_reduce_log_sum_default/onnx.tmfile
 Create graph failed.
 
@@ -737,7 +767,7 @@ test 59
 59: Test timeout computed to be: 120
 59: cannot open file ../onnx_node/test_reduce_max_default_axes_keepdim_example/onnx.tmfile
 59: Create graph failed.
-59/75 Test #59: test_onnx_op_reduce_max_default_axes_keepdim_example ...........***Failed    0.10 sec
+59/75 Test #59: test_onnx_op_reduce_max_default_axes_keepdim_example ...........***Failed    0.07 sec
 cannot open file ../onnx_node/test_reduce_max_default_axes_keepdim_example/onnx.tmfile
 Create graph failed.
 
@@ -773,7 +803,7 @@ test 62
 62: Test timeout computed to be: 120
 62: cannot open file ../onnx_node/test_selu/onnx.tmfile
 62: Create graph failed.
-62/75 Test #62: test_onnx_op_selu ..............................................***Failed    0.10 sec
+62/75 Test #62: test_onnx_op_selu ..............................................***Failed    0.07 sec
 cannot open file ../onnx_node/test_selu/onnx.tmfile
 Create graph failed.
 
@@ -785,7 +815,7 @@ test 63
 63: Test timeout computed to be: 120
 63: cannot open file ../onnx_node/test_selu_default/onnx.tmfile
 63: Create graph failed.
-63/75 Test #63: test_onnx_op_selu_default ......................................***Failed    0.08 sec
+63/75 Test #63: test_onnx_op_selu_default ......................................***Failed    0.10 sec
 cannot open file ../onnx_node/test_selu_default/onnx.tmfile
 Create graph failed.
 
@@ -809,7 +839,7 @@ test 65
 65: Test timeout computed to be: 120
 65: cannot open file ../onnx_node/test_squeeze/onnx.tmfile
 65: Create graph failed.
-65/75 Test #65: test_onnx_op_squeeze ...........................................***Failed    0.10 sec
+65/75 Test #65: test_onnx_op_squeeze ...........................................***Failed    0.09 sec
 cannot open file ../onnx_node/test_squeeze/onnx.tmfile
 Create graph failed.
 
@@ -821,7 +851,7 @@ test 66
 66: Test timeout computed to be: 120
 66: cannot open file ../onnx_node/test_sub/onnx.tmfile
 66: Create graph failed.
-66/75 Test #66: test_onnx_op_sub ...............................................***Failed    0.10 sec
+66/75 Test #66: test_onnx_op_sub ...............................................***Failed    0.07 sec
 cannot open file ../onnx_node/test_sub/onnx.tmfile
 Create graph failed.
 
@@ -833,7 +863,7 @@ test 67
 67: Test timeout computed to be: 120
 67: cannot open file ../onnx_node/test_tanh/onnx.tmfile
 67: Create graph failed.
-67/75 Test #67: test_onnx_op_tanh ..............................................***Failed    0.08 sec
+67/75 Test #67: test_onnx_op_tanh ..............................................***Failed    0.10 sec
 cannot open file ../onnx_node/test_tanh/onnx.tmfile
 Create graph failed.
 
@@ -881,7 +911,7 @@ test 71
 71: Test timeout computed to be: 120
 71: cannot open file ../onnx_node/test_unsqueeze_axis_3/onnx.tmfile
 71: Create graph failed.
-71/75 Test #71: test_onnx_op_unsqueeze_axis_3 ..................................***Failed    0.08 sec
+71/75 Test #71: test_onnx_op_unsqueeze_axis_3 ..................................***Failed    0.10 sec
 cannot open file ../onnx_node/test_unsqueeze_axis_3/onnx.tmfile
 Create graph failed.
 
@@ -917,7 +947,7 @@ test 74
 74: Test timeout computed to be: 120
 74: cannot open file ../onnx_node/test_unsqueeze_two_axes/onnx.tmfile
 74: Create graph failed.
-74/75 Test #74: test_onnx_op_unsqueeze_two_axes ................................***Failed    0.11 sec
+74/75 Test #74: test_onnx_op_unsqueeze_two_axes ................................***Failed    0.08 sec
 cannot open file ../onnx_node/test_unsqueeze_two_axes/onnx.tmfile
 Create graph failed.
 
@@ -929,14 +959,14 @@ test 75
 75: Test timeout computed to be: 120
 75: cannot open file ../onnx_node/test_unsqueeze_unsorted_axes/onnx.tmfile
 75: Create graph failed.
-75/75 Test #75: test_onnx_op_unsqueeze_unsorted_axes ...........................***Failed    0.08 sec
+75/75 Test #75: test_onnx_op_unsqueeze_unsorted_axes ...........................***Failed    0.10 sec
 cannot open file ../onnx_node/test_unsqueeze_unsorted_axes/onnx.tmfile
 Create graph failed.
 
 
 0% tests passed, 75 tests failed out of 75
 
-Total Test time (real) =   6.98 sec
+Total Test time (real) =   7.01 sec
 
 The following tests FAILED:
 	  1 - test_onnx_op_abs (Failed)
@@ -1019,7 +1049,7 @@ Errors while running CTest
 ==================== PART B: CUDA backend on-GPU parity (9 models) — CUDA-EXERCISING ====================
 Command: bash corex_port/test/run_tests.sh   (device = GPU 1)
 ############ Tengine CUDA backend on-GPU test (device=GPU 1) ############
-Timestamp    Thu Jul 23 11:28:51 2026
+Timestamp    Thu Jul 23 11:37:26 2026
 +--------------------------------------------------------------------------------+
 |  IX-ML: 4.4.0            Driver Version: 4.5.0          CUDA Version: 10.2     |
 |----------------------------------+----------------------+----------------------|
@@ -1039,7 +1069,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/squeezenet_v1.1_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 3 times, thread 1, avg time 1.81 ms, max_time 1.98 ms, min_time 1.71 ms
+Repeat 3 times, thread 1, avg time 1.96 ms, max_time 2.11 ms, min_time 1.87 ms
 --------------------------------------
 0.001000, 0
 0.001000, 1
@@ -1053,7 +1083,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/squeezenet_v1.1_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 1 times, thread 1, avg time 39.30 ms, max_time 39.30 ms, min_time 39.30 ms
+Repeat 1 times, thread 1, avg time 38.33 ms, max_time 38.33 ms, min_time 38.33 ms
 --------------------------------------
 0.001000, 0
 0.001000, 1
@@ -1062,7 +1092,7 @@ Repeat 1 times, thread 1, avg time 39.30 ms, max_time 39.30 ms, min_time 39.30 m
 0.001000, 4
 --------------------------------------
 ----------------------------------------------------------------------
-[RESULT squeezenet_v1.1] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=1.71ms)
+[RESULT squeezenet_v1.1] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=1.87ms)
 
 ======================================================================
 [CASE 2] model=mobilenet  (CUDA on GPU 1 vs CPU parity)
@@ -1073,7 +1103,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/mobilenet_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 3 times, thread 1, avg time 1.68 ms, max_time 1.85 ms, min_time 1.52 ms
+Repeat 3 times, thread 1, avg time 1.25 ms, max_time 1.37 ms, min_time 1.17 ms
 --------------------------------------
 0.000000, 0
 0.000000, 1
@@ -1087,7 +1117,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/mobilenet_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 1 times, thread 1, avg time 48.36 ms, max_time 48.36 ms, min_time 48.36 ms
+Repeat 1 times, thread 1, avg time 42.37 ms, max_time 42.37 ms, min_time 42.37 ms
 --------------------------------------
 0.000000, 0
 0.000000, 1
@@ -1096,7 +1126,7 @@ Repeat 1 times, thread 1, avg time 48.36 ms, max_time 48.36 ms, min_time 48.36 m
 0.000000, 4
 --------------------------------------
 ----------------------------------------------------------------------
-[RESULT mobilenet] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=1.52ms)
+[RESULT mobilenet] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=1.17ms)
 
 ======================================================================
 [CASE 3] model=mobilenet_v2  (CUDA on GPU 1 vs CPU parity)
@@ -1111,7 +1141,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/mobilenet_v2_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 3 times, thread 1, avg time 3.27 ms, max_time 4.00 ms, min_time 2.79 ms
+Repeat 3 times, thread 1, avg time 3.34 ms, max_time 4.20 ms, min_time 2.81 ms
 --------------------------------------
 0.001000, 0
 0.001000, 1
@@ -1125,7 +1155,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/mobilenet_v2_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 1 times, thread 1, avg time 52.40 ms, max_time 52.40 ms, min_time 52.40 ms
+Repeat 1 times, thread 1, avg time 73.86 ms, max_time 73.86 ms, min_time 73.86 ms
 --------------------------------------
 0.001000, 0
 0.001000, 1
@@ -1134,7 +1164,7 @@ Repeat 1 times, thread 1, avg time 52.40 ms, max_time 52.40 ms, min_time 52.40 m
 0.001000, 4
 --------------------------------------
 ----------------------------------------------------------------------
-[RESULT mobilenet_v2] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=2.79ms)
+[RESULT mobilenet_v2] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=2.81ms)
 
 ======================================================================
 [CASE 4] model=googlenet  (CUDA on GPU 1 vs CPU parity)
@@ -1149,7 +1179,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/googlenet_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 3 times, thread 1, avg time 26.15 ms, max_time 36.22 ms, min_time 20.91 ms
+Repeat 3 times, thread 1, avg time 20.99 ms, max_time 21.24 ms, min_time 20.80 ms
 --------------------------------------
 0.001000, 0
 0.001000, 1
@@ -1163,7 +1193,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/googlenet_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 1 times, thread 1, avg time 112.44 ms, max_time 112.44 ms, min_time 112.44 ms
+Repeat 1 times, thread 1, avg time 113.31 ms, max_time 113.31 ms, min_time 113.31 ms
 --------------------------------------
 0.001000, 0
 0.001000, 1
@@ -1172,7 +1202,7 @@ Repeat 1 times, thread 1, avg time 112.44 ms, max_time 112.44 ms, min_time 112.4
 0.001000, 4
 --------------------------------------
 ----------------------------------------------------------------------
-[RESULT googlenet] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=20.91ms)
+[RESULT googlenet] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=20.80ms)
 
 ======================================================================
 [CASE 5] model=resnet18  (CUDA on GPU 1 vs CPU parity)
@@ -1187,7 +1217,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/resnet18_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 3 times, thread 1, avg time 2.19 ms, max_time 2.54 ms, min_time 1.97 ms
+Repeat 3 times, thread 1, avg time 2.24 ms, max_time 2.61 ms, min_time 2.04 ms
 --------------------------------------
 0.001000, 0
 0.001000, 1
@@ -1201,7 +1231,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/resnet18_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 1 times, thread 1, avg time 91.17 ms, max_time 91.17 ms, min_time 91.17 ms
+Repeat 1 times, thread 1, avg time 88.37 ms, max_time 88.37 ms, min_time 88.37 ms
 --------------------------------------
 0.001000, 0
 0.001000, 1
@@ -1210,7 +1240,7 @@ Repeat 1 times, thread 1, avg time 91.17 ms, max_time 91.17 ms, min_time 91.17 m
 0.001000, 4
 --------------------------------------
 ----------------------------------------------------------------------
-[RESULT resnet18] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=1.97ms)
+[RESULT resnet18] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=2.04ms)
 
 ======================================================================
 [CASE 6] model=resnet50  (CUDA on GPU 1 vs CPU parity)
@@ -1225,7 +1255,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/resnet50_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 3 times, thread 1, avg time 4.73 ms, max_time 5.29 ms, min_time 4.02 ms
+Repeat 3 times, thread 1, avg time 4.49 ms, max_time 4.94 ms, min_time 4.26 ms
 --------------------------------------
 0.001000, 0
 0.001000, 1
@@ -1239,7 +1269,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/resnet50_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 1 times, thread 1, avg time 170.88 ms, max_time 170.88 ms, min_time 170.88 ms
+Repeat 1 times, thread 1, avg time 168.77 ms, max_time 168.77 ms, min_time 168.77 ms
 --------------------------------------
 0.001000, 0
 0.001000, 1
@@ -1248,7 +1278,7 @@ Repeat 1 times, thread 1, avg time 170.88 ms, max_time 170.88 ms, min_time 170.8
 0.001000, 4
 --------------------------------------
 ----------------------------------------------------------------------
-[RESULT resnet50] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=4.02ms)
+[RESULT resnet50] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=4.26ms)
 
 ======================================================================
 [CASE 7] model=shufflenet_v2  (CUDA on GPU 1 vs CPU parity)
@@ -1259,7 +1289,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/shufflenet_v2_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 3 times, thread 1, avg time 4.33 ms, max_time 4.70 ms, min_time 4.03 ms
+Repeat 3 times, thread 1, avg time 5.46 ms, max_time 6.36 ms, min_time 4.40 ms
 --------------------------------------
 0.000000, 0
 0.000000, 1
@@ -1273,7 +1303,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/shufflenet_v2_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 1 times, thread 1, avg time 21.98 ms, max_time 21.98 ms, min_time 21.98 ms
+Repeat 1 times, thread 1, avg time 21.53 ms, max_time 21.53 ms, min_time 21.53 ms
 --------------------------------------
 0.000000, 0
 0.000000, 1
@@ -1282,7 +1312,7 @@ Repeat 1 times, thread 1, avg time 21.98 ms, max_time 21.98 ms, min_time 21.98 m
 0.000000, 4
 --------------------------------------
 ----------------------------------------------------------------------
-[RESULT shufflenet_v2] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=4.03ms)
+[RESULT shufflenet_v2] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=4.40ms)
 
 ======================================================================
 [CASE 8] model=inception_v3  (CUDA on GPU 1 vs CPU parity)
@@ -1297,7 +1327,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/inception_v3_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 3 times, thread 1, avg time 5.86 ms, max_time 6.22 ms, min_time 5.44 ms
+Repeat 3 times, thread 1, avg time 7.58 ms, max_time 9.41 ms, min_time 6.20 ms
 --------------------------------------
 0.001000, 0
 0.001000, 1
@@ -1311,7 +1341,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/inception_v3_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 1 times, thread 1, avg time 154.62 ms, max_time 154.62 ms, min_time 154.62 ms
+Repeat 1 times, thread 1, avg time 155.59 ms, max_time 155.59 ms, min_time 155.59 ms
 --------------------------------------
 0.001000, 0
 0.001000, 1
@@ -1320,7 +1350,7 @@ Repeat 1 times, thread 1, avg time 154.62 ms, max_time 154.62 ms, min_time 154.6
 0.001000, 4
 --------------------------------------
 ----------------------------------------------------------------------
-[RESULT inception_v3] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=5.44ms)
+[RESULT inception_v3] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=6.20ms)
 
 ======================================================================
 [CASE 9] model=vgg16  (CUDA on GPU 1 vs CPU parity)
@@ -1335,7 +1365,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/vgg16_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 3 times, thread 1, avg time 4.16 ms, max_time 4.53 ms, min_time 3.96 ms
+Repeat 3 times, thread 1, avg time 4.25 ms, max_time 4.60 ms, min_time 3.98 ms
 --------------------------------------
 0.001000, 0
 0.001000, 1
@@ -1349,7 +1379,7 @@ tengine-lite library version: 1.5-dev
 model file : benchmark/models/vgg16_benchmark.tmfile
 image file : /tmp/test_img.jpg
 img_h, img_w, scale[3], mean[3] : 224 224 , 0.017 0.017 0.017, 104.0 116.7 122.7
-Repeat 1 times, thread 1, avg time 484.60 ms, max_time 484.60 ms, min_time 484.60 ms
+Repeat 1 times, thread 1, avg time 486.89 ms, max_time 486.89 ms, min_time 486.89 ms
 --------------------------------------
 0.001000, 0
 0.001000, 1
@@ -1358,7 +1388,7 @@ Repeat 1 times, thread 1, avg time 484.60 ms, max_time 484.60 ms, min_time 484.6
 0.001000, 4
 --------------------------------------
 ----------------------------------------------------------------------
-[RESULT vgg16] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=3.96ms)
+[RESULT vgg16] PASS  (cuda_rc=0, CUDA/CPU top-5 parity OK, cuda_min=3.98ms)
 
 ############ SUMMARY ############
 tests_run=9 tests_passed=9 tests_failed=0
