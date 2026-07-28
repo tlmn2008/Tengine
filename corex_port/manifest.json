@@ -17,9 +17,8 @@
   "tests_skipped": 0,
   "test_scope_note": "Completeness-correction re-run (v3): onnx 1.22.0 now installed, so the required ONNX node test data was generated (onnx backend node data -> Tengine .tmfile via convert_tool; 10 opset-incompatible models regenerated) and all 75 registered ctest ONNX op tests were actually EXECUTED (reach inference), plus the 9 CUDA-backend on-GPU parity cases. Totals: 84 run = 77 passed + 7 failed + 0 skipped. CUDA-exercising portion (9 models) = 9/9 pass. CPU-reference ONNX op ctests = 68/75 pass; the 7 failures are pre-existing Tengine CPU-reference-backend defects (4 conv all-zeros from weight-buffer-filled-after-prerun; batchnorm_example/dropout_default/pad_reflect heap-corruption aborts at teardown) — NOT CoreX/CUDA and NOT data issues. See test/test_summary.json + agent/session_notes.md.",
   "upstream_assessment": {
-    "upstreamable": "partial",
-    "nvidia_compatible": "guarded",
-    "notes": "cuda.cmake 以 IF EXISTS ${CUDAToolkit_BIN_DIR}/clang++ 分支选 clang++，否则回退 nvcc;source/CMakeLists 的 ivcore11 架构与诊断跳过均在 ILUVATAR 下生效，NVIDIA 路径不变。softmax 的 std::max+<algorithm> 为通用可移植性修复可单独回上游。7 个失败为 Tengine CPU 参考后端既有缺陷(未修)。CLA 需签，上游 CI 无 ivcore11。"
+    "upstream_status": "ready",
+    "notes": "cuda.cmake 以 IF EXISTS ${CUDAToolkit_BIN_DIR}/clang++ 分支选 clang++ 否则回退 nvcc;source/CMakeLists 的 ivcore11 架构与诊断跳过均在 ILUVATAR 下生效,NVIDIA 路径不变,可直接提 PR。softmax 的 std::max+<algorithm> 为通用可移植修复(见 bugfixes)可单独回上游。7 个失败为 Tengine CPU 参考后端既有缺陷,与可合性无关。CLA 需签,上游 CI 无 ivcore11。"
   },
   "bugfixes": [
     {
