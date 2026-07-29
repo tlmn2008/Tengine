@@ -1,70 +1,105 @@
 {
+  "schema_version": "1.0",
+  "repo": "Tengine",
   "blockers": [
     {
-      "id": 1,
-      "category": "workaround-able",
+      "id": "1",
       "symptom": "CMake configure fails: 'Failed to extract nvcc implicit link line'. cmake/cuda.cmake forces CMAKE_CUDA_COMPILER to CUDAToolkit_NVCC_EXECUTABLE, which on CoreX is a bash shim that produces no objects.",
+      "classification": "workaround-able",
+      "resolved": true,
       "file": "cmake/cuda.cmake",
+      "final_verdict": "Configure succeeds; CUDA compiler detected as CoreX Clang 22.1.0.",
       "error_snippet": "CMake Error at .../CMakeNVCCParseImplicitInfo.cmake:141 (message): Failed to extract nvcc implicit link line.",
       "attempts": [
-        {"action": "Reproduced the wall with an unmodified baseline configure (corex_port/build/baseline_configure.log).", "result": "confirmed"},
-        {"action": "Patched cmake/cuda.cmake to detect ${CUDAToolkit_BIN_DIR}/clang++ and use it as CMAKE_CUDA_COMPILER on CoreX (ID=ILUVATAR), falling back to nvcc on real NVIDIA.", "result": "resolved"}
-      ],
-      "final_verdict": "Configure succeeds; CUDA compiler detected as CoreX Clang 22.1.0.",
-      "resolved": true
+        {
+          "action": "Reproduced the wall with an unmodified baseline configure (corex_port/build/baseline_configure.log).",
+          "result": "confirmed"
+        },
+        {
+          "action": "Patched cmake/cuda.cmake to detect ${CUDAToolkit_BIN_DIR}/clang++ and use it as CMAKE_CUDA_COMPILER on CoreX (ID=ILUVATAR), falling back to nvcc on real NVIDIA.",
+          "result": "resolved"
+        }
+      ]
     },
     {
-      "id": 2,
-      "category": "workaround-able",
+      "id": "2",
       "symptom": "nvgpu_softmax.cu:202 host code: 'no matching function for call to max'. CoreX clang++ only sees __device__ overloads of max().",
+      "classification": "workaround-able",
+      "resolved": true,
       "file": "source/device/cuda/op/nvgpu_softmax.cu",
+      "final_verdict": "All 13 CUDA .cu op kernels compile with CoreX clang.",
       "error_snippet": "error: no matching function for call to 'max'",
       "attempts": [
-        {"action": "Consulted iluvatar-cuda-base min-max-no-global case.", "result": "matched"},
-        {"action": "Added #include <algorithm> and changed max(...) to std::max(...).", "result": "resolved"}
-      ],
-      "final_verdict": "All 13 CUDA .cu op kernels compile with CoreX clang.",
-      "resolved": true
+        {
+          "action": "Consulted iluvatar-cuda-base min-max-no-global case.",
+          "result": "matched"
+        },
+        {
+          "action": "Added #include <algorithm> and changed max(...) to std::max(...).",
+          "result": "resolved"
+        }
+      ]
     },
     {
-      "id": 3,
-      "category": "workaround-able",
+      "id": "3",
       "symptom": "Target property CUDA_ARCHITECTURES set to NVIDIA sm numbers (50;52;61;70;75) is not valid for the CoreX clang backend, whose only arch is ivcore11.",
+      "classification": "workaround-able",
+      "resolved": true,
       "file": "source/CMakeLists.txt",
+      "final_verdict": "CUDA objects build for ivcore11.",
       "error_snippet": "N/A (proactively corrected per nvcc-flag-translation before it could break codegen)",
       "attempts": [
-        {"action": "Guarded the arch block on CMAKE_CUDA_COMPILER_ID==ILUVATAR and set CUDA_ARCHITECTURES ivcore11 (+ CMAKE_CUDA_ARCHITECTURES=ivcore11 env).", "result": "resolved"}
-      ],
-      "final_verdict": "CUDA objects build for ivcore11.",
-      "resolved": true
+        {
+          "action": "Guarded the arch block on CMAKE_CUDA_COMPILER_ID==ILUVATAR and set CUDA_ARCHITECTURES ivcore11 (+ CMAKE_CUDA_ARCHITECTURES=ivcore11 env).",
+          "result": "resolved"
+        }
+      ]
     },
     {
-      "id": 4,
-      "category": "workaround-able",
+      "id": "4",
       "symptom": "A full `cmake --build build` also builds ~48 OpenCV image-demo examples and 3 pipeline examples; some fail to link (undefined reference to cv::putText/cv::imwrite) and the pipeline headers miss <string>/<cstdio> under clang. These targets are NOT part of the CUDA backend.",
+      "classification": "workaround-able",
+      "resolved": true,
       "file": "examples/CMakeLists.txt, examples/pipeline/graph/*.h",
+      "final_verdict": "Not a CUDA-backend blocker. The CUDA library + CUDA example build and run on GPU; OpenCV/pipeline demo examples are orthogonal and left out of the CUDA migration surface.",
       "error_snippet": "undefined reference to `cv::imwrite(...)`; error: implicit instantiation of undefined template 'std::basic_string<char>'; use of undeclared identifier 'stderr'",
       "attempts": [
-        {"action": "Confirmed OpenCV 4.6.0 (CoreX build) is installed and cv::putText/cv::imwrite symbols exist in libopencv_imgproc/imgcodecs; the failure is OpenCV example link wiring (OpenCV_LIBS) + clang header hygiene, independent of the CUDA port.", "result": "diagnosed"},
-        {"action": "Scoped the migration build to the CUDA backend targets (tengine-lite, tengine-lite-static, tm_classification_cuda) which build cleanly; the CPU reference tm_classification also builds.", "result": "resolved (out of CUDA scope)"}
-      ],
-      "final_verdict": "Not a CUDA-backend blocker. The CUDA library + CUDA example build and run on GPU; OpenCV/pipeline demo examples are orthogonal and left out of the CUDA migration surface.",
-      "resolved": true
+        {
+          "action": "Confirmed OpenCV 4.6.0 (CoreX build) is installed and cv::putText/cv::imwrite symbols exist in libopencv_imgproc/imgcodecs; the failure is OpenCV example link wiring (OpenCV_LIBS) + clang header hygiene, independent of the CUDA port.",
+          "result": "diagnosed"
+        },
+        {
+          "action": "Scoped the migration build to the CUDA backend targets (tengine-lite, tengine-lite-static, tm_classification_cuda) which build cleanly; the CPU reference tm_classification also builds.",
+          "result": "resolved (out of CUDA scope)"
+        }
+      ]
     },
     {
-      "id": 5,
-      "category": "workaround-able",
+      "id": "5",
       "symptom": "The repository's full registered ctest collection is 75 ONNX operator tests (tests/op/test_onnx_op_*.cpp), CPU reference backend, needing per-op ../onnx_node/<op>/{onnx.tmfile,test_data_set_*/*.pb} data not shipped in the repo. (v1/v2: onnx was not installed so the data could not be produced -> tests failed at load. v3: onnx 1.22.0 installed -> data generated and tests executed for real.)",
+      "classification": "workaround-able",
+      "resolved": true,
       "file": "tests/op/test_onnx_op_*.cpp (data path ../onnx_node)",
+      "final_verdict": "Resolved (data produced, tests executed). The 75 CPU-reference ONNX op ctests now run for real: 68 pass, 7 fail. The 7 failures are pre-existing Tengine CPU-reference-backend defects, NOT CoreX/CUDA and NOT data: 4 conv (basic_conv_with_padding/basic_conv_without_padding/conv_with_strides_no_padding/conv_with_strides_padding) emit all-zeros because the harness fills the conv weight buffer (input_1) AFTER prerun_graph, so Tengine prepacks zero weights; batchnorm_example -> 'free(): invalid size' abort; dropout_default -> computes correctly then aborts with heap corruption at teardown; pad_reflect -> 'double free or corruption' abort. These are out of CUDA migration scope (CPU backend). The CUDA-exercising portion (9-model on-GPU parity) passes 9/9. Full evidence in test/test.log.",
       "error_snippet": "v1/v2: cannot open file ../onnx_node/test_abs/onnx.tmfile -> Create graph failed",
       "attempts": [
-        {"action": "Built all 75 onnx op test binaries with CoreX clang++ (-DTENGINE_BUILD_TESTS=ON, Protobuf 3.21.12) — all compiled cleanly.", "result": "resolved (compile)"},
-        {"action": "v3: onnx 1.22.0 confirmed installed (1765 node dirs at onnx/backend/test/data/node). Built Tengine convert_tool (-DTENGINE_BUILD_CONVERT_TOOL=ON) and generated ../onnx_node/<op>/ data for all 75 ops: copy test_data_set_* + convert model.onnx -> onnx.tmfile (corex_port/test/gen_onnx_node_data.sh).", "result": "65/75 converted directly"},
-        {"action": "v3: regenerated 10 ops the 2024 convert_tool could not take from stock onnx 1.22 opset-25 models (Unsqueeze/Pad moved axes/pads to inputs -> segfault; BatchNormalization omitted the required 'epsilon' attr -> throw). Rebuilt at Tengine-parseable opsets / added default epsilon via onnx.helper (corex_port/test/regen_hard_ops.py).", "result": "all 75 ops now have onnx.tmfile + data"},
-        {"action": "v3: ran the full ctest collection for real (cd build && ctest --output-on-failure -V --timeout 120). All 75 reach inference.", "result": "68 passed, 7 failed (91%). No skips."}
-      ],
-      "final_verdict": "Resolved (data produced, tests executed). The 75 CPU-reference ONNX op ctests now run for real: 68 pass, 7 fail. The 7 failures are pre-existing Tengine CPU-reference-backend defects, NOT CoreX/CUDA and NOT data: 4 conv (basic_conv_with_padding/basic_conv_without_padding/conv_with_strides_no_padding/conv_with_strides_padding) emit all-zeros because the harness fills the conv weight buffer (input_1) AFTER prerun_graph, so Tengine prepacks zero weights; batchnorm_example -> 'free(): invalid size' abort; dropout_default -> computes correctly then aborts with heap corruption at teardown; pad_reflect -> 'double free or corruption' abort. These are out of CUDA migration scope (CPU backend). The CUDA-exercising portion (9-model on-GPU parity) passes 9/9. Full evidence in test/test.log.",
-      "resolved": true
+        {
+          "action": "Built all 75 onnx op test binaries with CoreX clang++ (-DTENGINE_BUILD_TESTS=ON, Protobuf 3.21.12) — all compiled cleanly.",
+          "result": "resolved (compile)"
+        },
+        {
+          "action": "v3: onnx 1.22.0 confirmed installed (1765 node dirs at onnx/backend/test/data/node). Built Tengine convert_tool (-DTENGINE_BUILD_CONVERT_TOOL=ON) and generated ../onnx_node/<op>/ data for all 75 ops: copy test_data_set_* + convert model.onnx -> onnx.tmfile (corex_port/test/gen_onnx_node_data.sh).",
+          "result": "65/75 converted directly"
+        },
+        {
+          "action": "v3: regenerated 10 ops the 2024 convert_tool could not take from stock onnx 1.22 opset-25 models (Unsqueeze/Pad moved axes/pads to inputs -> segfault; BatchNormalization omitted the required 'epsilon' attr -> throw). Rebuilt at Tengine-parseable opsets / added default epsilon via onnx.helper (corex_port/test/regen_hard_ops.py).",
+          "result": "all 75 ops now have onnx.tmfile + data"
+        },
+        {
+          "action": "v3: ran the full ctest collection for real (cd build && ctest --output-on-failure -V --timeout 120). All 75 reach inference.",
+          "result": "68 passed, 7 failed (91%). No skips."
+        }
+      ]
     }
   ]
 }
